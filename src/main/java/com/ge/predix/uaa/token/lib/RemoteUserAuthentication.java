@@ -1,6 +1,6 @@
 /*******************************************************************************
- *     Cloud Foundry 
- *     Copyright (c) [2009-2014] Pivotal Software, Inc. All Rights Reserved.
+ *     Cloud Foundry
+ *     Copyright 2009, 2016-2014] Pivotal Software, Inc. All Rights Reserved.
  *
  *     This product is licensed to you under the Apache License, Version 2.0 (the "License").
  *     You may not use this product except in compliance with the License.
@@ -21,22 +21,22 @@ import org.springframework.security.core.GrantedAuthority;
 
 /**
  * Authentication token representing a user decoded from a UAA access token.
- * 
+ *
  * @author Dave Syer
- * 
+ *
  */
 public class RemoteUserAuthentication extends AbstractAuthenticationToken implements Authentication {
 
     /**
-     * 
+     *
      */
     private static final long serialVersionUID = 1L;
-    private String id;
-    private String username;
-    private String email;
+    private final String id;
+    private final String username;
+    private final String email;
 
-    public RemoteUserAuthentication(String id, String username, String email,
-                    Collection<? extends GrantedAuthority> authorities) {
+    public RemoteUserAuthentication(final String id, final String username, final String email,
+            final Collection<? extends GrantedAuthority> authorities) {
         super(authorities);
         this.id = id;
         this.username = username;

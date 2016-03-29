@@ -1,6 +1,6 @@
 /*******************************************************************************
  *     Cloud Foundry
- *     Copyright (c) [2009-2015] Pivotal Software, Inc. All Rights Reserved.
+ *     Copyright 2009, 2016-2015] Pivotal Software, Inc. All Rights Reserved.
  *
  *     This product is licensed to you under the Apache License, Version 2.0 (the "License").
  *     You may not use this product except in compliance with the License.
@@ -12,19 +12,23 @@
  *******************************************************************************/
 package com.ge.predix.uaa.token.lib;
 
+import java.io.IOException;
+
+import org.springframework.util.StringUtils;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.util.StringUtils;
 
-import java.io.IOException;
-
-
-public class JsonUtils {
+public final class JsonUtils {
     private static ObjectMapper objectMapper = new ObjectMapper();
 
-    public static String writeValueAsString(Object object) throws JsonUtilException {
+    private JsonUtils() {
+        //prevent instantiation
+    }
+
+    public static String writeValueAsString(final Object object) throws JsonUtilException {
         try {
             return objectMapper.writeValueAsString(object);
         } catch (IOException e) {
@@ -32,7 +36,7 @@ public class JsonUtils {
         }
     }
 
-    public static byte[] writeValueAsBytes(Object object) throws JsonUtilException {
+    public static byte[] writeValueAsBytes(final Object object) throws JsonUtilException {
         try {
             return objectMapper.writeValueAsBytes(object);
         } catch (IOException e) {
@@ -40,7 +44,7 @@ public class JsonUtils {
         }
     }
 
-    public static <T> T readValue(String s, Class<T> clazz) throws JsonUtilException {
+    public static <T> T readValue(final String s, final Class<T> clazz) throws JsonUtilException {
         try {
             if (StringUtils.hasText(s)) {
                 return objectMapper.readValue(s, clazz);
@@ -52,7 +56,7 @@ public class JsonUtils {
         }
     }
 
-    public static <T> T readValue(String s, TypeReference<?> typeReference) {
+    public static <T> T readValue(final String s, final TypeReference<?> typeReference) {
         try {
             if (StringUtils.hasText(s)) {
                 return objectMapper.readValue(s, typeReference);
@@ -64,7 +68,7 @@ public class JsonUtils {
         }
     }
 
-    public static <T> T convertValue(Object object, Class<T> toClazz) throws JsonUtilException {
+    public static <T> T convertValue(final Object object, final Class<T> toClazz) throws JsonUtilException {
         try {
             if (object == null) {
                 return null;
@@ -76,7 +80,7 @@ public class JsonUtils {
         }
     }
 
-    public static JsonNode readTree(String s) {
+    public static JsonNode readTree(final String s) {
         try {
             if (StringUtils.hasText(s)) {
                 return objectMapper.readTree(s);
@@ -94,7 +98,7 @@ public class JsonUtils {
 
         private static final long serialVersionUID = -4804245225960963421L;
 
-        public JsonUtilException(Throwable cause) {
+        public JsonUtilException(final Throwable cause) {
             super(cause);
         }
 

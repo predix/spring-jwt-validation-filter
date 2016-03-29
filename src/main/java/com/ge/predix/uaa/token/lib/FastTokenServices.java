@@ -1,3 +1,18 @@
+/*******************************************************************************
+ * Copyright 2016 General Electric Company.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *******************************************************************************/
 package com.ge.predix.uaa.token.lib;
 
 import static com.ge.predix.uaa.token.lib.Claims.EXP;
@@ -181,18 +196,19 @@ public class FastTokenServices implements ResourceServerTokenServices {
 
     protected Date getIatDate(final Map<String, Object> claims) {
         Integer iat = (Integer) claims.get("iat");
-        return new Date((iat.longValue() - this.maxAcceptableClockSkewSeconds) * 1000l);
+        return new Date((iat.longValue() - this.maxAcceptableClockSkewSeconds) * 1000L);
     }
 
     protected Date getExpDate(final Map<String, Object> claims) {
         Integer exp = (Integer) claims.get(EXP);
-        return new Date((exp.longValue() + this.maxAcceptableClockSkewSeconds) * 1000l);
+        return new Date((exp.longValue() + this.maxAcceptableClockSkewSeconds) * 1000L);
     }
 
     protected String getTokenKey(final String issuer) {
 
         String tokenKeyUrl = getTokenKeyURL(issuer);
-        ParameterizedTypeReference<Map<String, Object>> typeRef = new ParameterizedTypeReference<Map<String, Object>>() {
+        ParameterizedTypeReference<Map<String, Object>> typeRef = 
+                new ParameterizedTypeReference<Map<String, Object>>() {
             //
         };
         Map<String, Object> responseMap = this.restTemplate.exchange(tokenKeyUrl, HttpMethod.GET, null, typeRef)
@@ -241,16 +257,16 @@ public class FastTokenServices implements ResourceServerTokenServices {
     protected Authentication getUserAuthentication(final Map<String, Object> map, final Set<String> scope) {
         String username = (String) map.get("user_name");
         if (null == username) {
-            String client_id = (String) map.get("client_id");
+            String clientId = (String) map.get("client_id");
 
-            if (null == client_id) {
+            if (null == clientId) {
                 return null;
             }
 
             Set<GrantedAuthority> clientAuthorities = new HashSet<GrantedAuthority>();
             clientAuthorities.addAll(getAuthorities(scope));
             clientAuthorities.add(new SimpleGrantedAuthority("isOAuth2Client"));
-            return new RemoteUserAuthentication(client_id, client_id, null, clientAuthorities);
+            return new RemoteUserAuthentication(clientId, clientId, null, clientAuthorities);
         }
         Set<GrantedAuthority> userAuthorities = new HashSet<GrantedAuthority>();
         if (map.containsKey("user_authorities")) {
@@ -298,8 +314,8 @@ public class FastTokenServices implements ResourceServerTokenServices {
             return new RsaVerifier(signingKey);
         }
 
-        throw new IllegalArgumentException(
-                "Unsupported key detected. FastRemoteTokenService only supports RSA public keys for token verification.");
+        throw new IllegalArgumentException("Unsupported key detected. "
+                + "FastRemoteTokenService only supports RSA public keys for token verification.");
     }
 
     /**
@@ -334,7 +350,7 @@ public class FastTokenServices implements ResourceServerTokenServices {
         this.maxAcceptableClockSkewSeconds = maxAcceptableClockSkewSeconds;
     }
 
-    public void setTrustedIssuers(List<String> trustedIssuers) {
+    public void setTrustedIssuers(final List<String> trustedIssuers) {
         this.trustedIssuers = trustedIssuers;
     }
 }

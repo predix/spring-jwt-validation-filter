@@ -1,3 +1,18 @@
+/*******************************************************************************
+ * Copyright 2016 General Electric Company.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *******************************************************************************/
 package com.ge.predix.uaa.token.lib;
 
 import static com.ge.predix.uaa.token.lib.Claims.USER_ID;
@@ -51,7 +66,7 @@ public class FastTokenServiceTest {
         Mockito.when(restTemplate.exchange(TOKEN_KEY_URL, HttpMethod.GET, null, typeRef))
                 .thenReturn(TestTokenUtil.mockTokenKeyResponseEntity());
         this.services.setRestTemplate(restTemplate);
-        
+
         List<String> trustedIssuers = new ArrayList<String>();
         trustedIssuers.add(TOKEN_ISSUER_ID);
         this.services.setTrustedIssuers(trustedIssuers);
@@ -83,7 +98,7 @@ public class FastTokenServiceTest {
         assertEquals("1adc931e-d65f-4357-b90d-dd4131b8749a",
                 ((RemoteUserAuthentication) result.getUserAuthentication()).getId());
         assertNotNull(result.getOAuth2Request().getRequestParameters());
-  
+
     }
 
     /**
@@ -113,7 +128,7 @@ public class FastTokenServiceTest {
         String accessToken = this.testTokenUtil.mockAccessToken(System.currentTimeMillis() + 240000, 60);
         this.services.loadAuthentication(accessToken);
     }
-    
+
     /**
      * Tests that null token issues an InvalidTokenException.
      */

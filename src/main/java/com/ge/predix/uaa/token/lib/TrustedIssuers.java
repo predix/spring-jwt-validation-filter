@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 General Electric Company. All rights reserved.
+ * Copyright 2015, 2016015 General Electric Company. All rights reserved.
  *
  * The copyright to the computer software herein is the property of
  * General Electric Company. The software may be used and/or copied only
