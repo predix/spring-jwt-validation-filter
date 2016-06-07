@@ -48,7 +48,7 @@ public class FastTokenServiceTest {
 
     private final FastTokenServices services = new FastTokenServices();
 
-    private final Map<String, Object> body = new HashMap<String, Object>();
+    private final Map<String, Object> body = new HashMap<>();
 
     public FastTokenServiceTest() throws Exception {
 
@@ -58,7 +58,8 @@ public class FastTokenServiceTest {
         this.body.put(Claims.ISS, TOKEN_ISSUER_ID);
         this.body.put(Claims.USER_ID, "HDGFJSHGDF");
 
-        ParameterizedTypeReference<Map<String, Object>> typeRef = new ParameterizedTypeReference<Map<String, Object>>() {
+        ParameterizedTypeReference<Map<String, Object>> typeRef =
+                new ParameterizedTypeReference<Map<String, Object>>() {
             // Nothing to add.
         };
 
@@ -67,7 +68,7 @@ public class FastTokenServiceTest {
                 .thenReturn(TestTokenUtil.mockTokenKeyResponseEntity());
         this.services.setRestTemplate(restTemplate);
 
-        List<String> trustedIssuers = new ArrayList<String>();
+        List<String> trustedIssuers = new ArrayList<>();
         trustedIssuers.add(TOKEN_ISSUER_ID);
         this.services.setTrustedIssuers(trustedIssuers);
     }
