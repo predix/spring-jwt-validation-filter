@@ -33,7 +33,6 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
@@ -52,7 +51,6 @@ import org.springframework.security.oauth2.provider.client.BaseClientDetails;
 import org.springframework.security.oauth2.provider.token.ResourceServerTokenServices;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
-import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestOperations;
 import org.springframework.web.client.RestTemplate;
@@ -222,17 +220,16 @@ public class FastTokenServices implements ResourceServerTokenServices {
         }
 
         String tokenKeyUrl = getTokenKeyURL(issuer);
-        ParameterizedTypeReference<Map<String, Object>> typeRef = 
-                new ParameterizedTypeReference<Map<String, Object>>() {
+        ParameterizedTypeReference<Map<String, Object>> typeRef = new ParameterizedTypeReference<Map<String, Object>>()
+        {
             //
         };
         Map<String, Object> responseMap = null;
         try {
             responseMap = this.restTemplate.exchange(tokenKeyUrl, HttpMethod.GET, null, typeRef).getBody();
         } catch (RestClientException e) {
-            String statusText = "Unable to retrieve the token public key. " + e.getMessage();
-            LOG.error(statusText);
-            throw new HttpServerErrorException(HttpStatus.BAD_GATEWAY, statusText);
+            LOG.error("Unable to retrieve the token public key. " + e.getMessage());
+            throw e;
         }
 
         String tokenKey = responseMap.get("value").toString();
