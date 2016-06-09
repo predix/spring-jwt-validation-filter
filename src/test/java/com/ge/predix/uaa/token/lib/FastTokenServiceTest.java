@@ -32,6 +32,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.security.jwt.crypto.sign.InvalidSignatureException;
 import org.springframework.security.oauth2.common.exceptions.InvalidTokenException;
 import org.springframework.security.oauth2.provider.OAuth2Authentication;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import org.testng.annotations.Test;
 
@@ -163,6 +164,27 @@ public class FastTokenServiceTest {
 
         // We've tampered the token so this should fail.
         this.services.loadAuthentication(accessToken);
+    }
+
+    /**
+     * Tests that connection error while retrieving token key issues RestClientException.
+     */
+    @SuppressWarnings("unchecked")
+    @Test(expectedExceptions = RestClientException.class)
+    public void testLoadAuthenticationWithConnectionTimeout() throws Exception {
+        String accessToken = this.testTokenUtil.mockAccessToken(60);
+
+        FastTokenServices services = new FastTokenServices();
+        ParameterizedTypeReference<Map<String, Object>> typeRef =
+                new ParameterizedTypeReference<Map<String, Object>>() {
+            // Nothing to add.
+        };
+        RestTemplate restTemplate = Mockito.mock(RestTemplate.class);
+        Mockito.when(restTemplate.exchange(TOKEN_KEY_URL, HttpMethod.GET, null, typeRef))
+                .thenThrow(RestClientException.class);
+        services.setRestTemplate(restTemplate);
+
+        services.loadAuthentication(accessToken);
     }
 
     /**
