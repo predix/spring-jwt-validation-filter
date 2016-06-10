@@ -1,5 +1,10 @@
+# spring-jwt-validation-filter
+
 This module provides two implementations of org.springframework.security.oauth2.provider.token.ResourceServerTokenServices
 for loading spring authentication based on a access token in a incoming request.
+
+## LICENSE
+This project is licensed under Apache v2.
 
 # FastTokenServices 
 FastTokenServices is a replacement for the original RemoteTokenServices. It is "fast" because it does not make calls 
@@ -67,6 +72,6 @@ ZAC for information needed on the token issuers trusted for that zone.
     <dependency>
         <groupId>com.ge.predix</groupId>
         <artifactId>uaa-token-lib</artifactId>
-        <version>3.1.1</version>
+        <version>3.1.3</version>
     </dependency>
 ```    

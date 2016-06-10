@@ -1,8 +1,22 @@
+/*******************************************************************************
+ * Copyright 2016 General Electric Company.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *******************************************************************************/
 package com.ge.predix.uaa.token.lib;
 
 import static com.ge.predix.uaa.token.lib.Claims.EXP;
 
-import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.util.Collection;
 import java.util.Collections;
@@ -19,7 +33,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpMethod;
-import org.springframework.http.client.ClientHttpResponse;
+import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.GrantedAuthority;
@@ -37,7 +51,7 @@ import org.springframework.security.oauth2.provider.client.BaseClientDetails;
 import org.springframework.security.oauth2.provider.token.ResourceServerTokenServices;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
-import org.springframework.web.client.DefaultResponseErrorHandler;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestOperations;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -62,21 +76,16 @@ public class FastTokenServices implements ResourceServerTokenServices {
 
     private int maxAcceptableClockSkewSeconds = 60;
 
+    private int tokenKeyRequestTimeoutSeconds = 2;
+
     private List<String> trustedIssuers;
 
-    private final Map<String, SignatureVerifier> tokenKeys = new HashMap<String, SignatureVerifier>();
+    private final Map<String, SignatureVerifier> tokenKeys = new HashMap<>();
 
-    public FastTokenServices() {
-        this.restTemplate = new RestTemplate();
-        ((RestTemplate) this.restTemplate).setErrorHandler(new DefaultResponseErrorHandler() {
-            @Override
-            // Ignore 400
-            public void handleError(final ClientHttpResponse response) throws IOException {
-                if (response.getRawStatusCode() != 400) {
-                    super.handleError(response);
-                }
-            }
-        });
+    // public FastTokenServices() {}//Default constructor not needed
+
+    public void setTokenKeyRequestTimeout(final int tokenKeyRequestTimeout) {
+        this.tokenKeyRequestTimeoutSeconds = tokenKeyRequestTimeout;
     }
 
     @Override
@@ -107,7 +116,7 @@ public class FastTokenServices implements ResourceServerTokenServices {
         Assert.state(claims.containsKey("client_id"), "Client id must be present in response from auth server");
         String remoteClientId = (String) claims.get("client_id");
 
-        Set<String> scope = new HashSet<String>();
+        Set<String> scope = new HashSet<>();
         if (claims.containsKey("scope")) {
             @SuppressWarnings("unchecked")
             Collection<String> values = (Collection<String>) claims.get("scope");
@@ -117,14 +126,14 @@ public class FastTokenServices implements ResourceServerTokenServices {
         AuthorizationRequest clientAuthentication = new AuthorizationRequest(remoteClientId, scope);
 
         if (claims.containsKey("resource_ids") || claims.containsKey("client_authorities")) {
-            Set<String> resourceIds = new HashSet<String>();
+            Set<String> resourceIds = new HashSet<>();
             if (claims.containsKey("resource_ids")) {
                 @SuppressWarnings("unchecked")
                 Collection<String> values = (Collection<String>) claims.get("resource_ids");
                 resourceIds.addAll(values);
             }
 
-            Set<GrantedAuthority> clientAuthorities = new HashSet<GrantedAuthority>();
+            Set<GrantedAuthority> clientAuthorities = new HashSet<>();
             if (claims.containsKey("client_authorities")) {
                 @SuppressWarnings("unchecked")
                 Collection<String> values = (Collection<String>) claims.get("client_authorities");
@@ -192,22 +201,36 @@ public class FastTokenServices implements ResourceServerTokenServices {
 
     protected Date getIatDate(final Map<String, Object> claims) {
         Integer iat = (Integer) claims.get("iat");
-        return new Date((iat.longValue() - this.maxAcceptableClockSkewSeconds) * 1000l);
+        return new Date((iat.longValue() - this.maxAcceptableClockSkewSeconds) * 1000L);
     }
 
     protected Date getExpDate(final Map<String, Object> claims) {
         Integer exp = (Integer) claims.get(EXP);
-        return new Date((exp.longValue() + this.maxAcceptableClockSkewSeconds) * 1000l);
+        return new Date((exp.longValue() + this.maxAcceptableClockSkewSeconds) * 1000L);
     }
 
     protected String getTokenKey(final String issuer) {
+        // Check if the RestTemplate has been initialized already...
+        if (null == this.restTemplate) {
+            this.restTemplate = new RestTemplate();
+            ((RestTemplate) this.restTemplate).setErrorHandler(new FastTokenServicesResponseErrorHandler());
+            HttpComponentsClientHttpRequestFactory requestFactory = new HttpComponentsClientHttpRequestFactory();
+            requestFactory.setConnectTimeout(this.tokenKeyRequestTimeoutSeconds * 1000);
+            ((RestTemplate) this.restTemplate).setRequestFactory(requestFactory);
+        }
 
         String tokenKeyUrl = getTokenKeyURL(issuer);
-        ParameterizedTypeReference<Map<String, Object>> typeRef = new ParameterizedTypeReference<Map<String, Object>>() {
+        ParameterizedTypeReference<Map<String, Object>> typeRef = new ParameterizedTypeReference<Map<String, Object>>()
+        {
             //
         };
-        Map<String, Object> responseMap = this.restTemplate.exchange(tokenKeyUrl, HttpMethod.GET, null, typeRef)
-                .getBody();
+        Map<String, Object> responseMap = null;
+        try {
+            responseMap = this.restTemplate.exchange(tokenKeyUrl, HttpMethod.GET, null, typeRef).getBody();
+        } catch (RestClientException e) {
+            LOG.error("Unable to retrieve the token public key. " + e.getMessage());
+            throw e;
+        }
 
         String tokenKey = responseMap.get("value").toString();
 
@@ -242,7 +265,7 @@ public class FastTokenServices implements ResourceServerTokenServices {
     }
 
     protected Set<GrantedAuthority> getAuthorities(final Collection<String> authorities) {
-        Set<GrantedAuthority> result = new HashSet<GrantedAuthority>();
+        Set<GrantedAuthority> result = new HashSet<>();
         for (String authority : authorities) {
             result.add(new SimpleGrantedAuthority(authority));
         }
@@ -252,18 +275,18 @@ public class FastTokenServices implements ResourceServerTokenServices {
     protected Authentication getUserAuthentication(final Map<String, Object> map, final Set<String> scope) {
         String username = (String) map.get("user_name");
         if (null == username) {
-            String client_id = (String) map.get("client_id");
+            String clientId = (String) map.get("client_id");
 
-            if (null == client_id) {
+            if (null == clientId) {
                 return null;
             }
 
-            Set<GrantedAuthority> clientAuthorities = new HashSet<GrantedAuthority>();
+            Set<GrantedAuthority> clientAuthorities = new HashSet<>();
             clientAuthorities.addAll(getAuthorities(scope));
             clientAuthorities.add(new SimpleGrantedAuthority("isOAuth2Client"));
-            return new RemoteUserAuthentication(client_id, client_id, null, clientAuthorities);
+            return new RemoteUserAuthentication(clientId, clientId, null, clientAuthorities);
         }
-        Set<GrantedAuthority> userAuthorities = new HashSet<GrantedAuthority>();
+        Set<GrantedAuthority> userAuthorities = new HashSet<>();
         if (map.containsKey("user_authorities")) {
             @SuppressWarnings("unchecked")
             Collection<String> values = (Collection<String>) map.get("user_authorities");
@@ -309,8 +332,8 @@ public class FastTokenServices implements ResourceServerTokenServices {
             return new RsaVerifier(signingKey);
         }
 
-        throw new IllegalArgumentException(
-                "Unsupported key detected. FastRemoteTokenService only supports RSA public keys for token verification.");
+        throw new IllegalArgumentException("Unsupported key detected. "
+                + "FastRemoteTokenService only supports RSA public keys for token verification.");
     }
 
     /**
@@ -345,7 +368,7 @@ public class FastTokenServices implements ResourceServerTokenServices {
         this.maxAcceptableClockSkewSeconds = maxAcceptableClockSkewSeconds;
     }
 
-    public void setTrustedIssuers(List<String> trustedIssuers) {
+    public void setTrustedIssuers(final List<String> trustedIssuers) {
         this.trustedIssuers = trustedIssuers;
     }
 }

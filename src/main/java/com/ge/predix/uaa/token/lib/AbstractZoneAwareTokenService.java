@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 General Electric Company. All rights reserved.
+ * Copyright 2015, 2016015 General Electric Company. All rights reserved.
  *
  * The copyright to the computer software herein is the property of
  * General Electric Company. The software may be used and/or copied only
@@ -66,12 +66,12 @@ public abstract class AbstractZoneAwareTokenService implements ResourceServerTok
 
         // Get zone id being requested from HTTP request
         String zoneId = HttpServletRequestUtil.getZoneName(this.request, this.serviceBaseDomain,
-                getServiceZoneHeaderList(this.serviceZoneHeaders));
+                getServiceZoneHeaderList());
 
         URI requestUri = URI.create(this.request.getRequestURI());
 
         OAuth2Authentication authentication;
-        if (isNonZoneSpecificRequest(requestUri, this.defaultZoneConfig)) {
+        if (isNonZoneSpecificRequest(requestUri)) {
             if (zoneId == null) {
                 authentication = authenticateNonZoneSpecificRequest(accessToken);
             } else {
@@ -109,14 +109,13 @@ public abstract class AbstractZoneAwareTokenService implements ResourceServerTok
         return authentication;
     }
 
-    private boolean isNonZoneSpecificRequest(final URI requestUri,
-            final DefaultZoneConfiguration defaultZoneConfig) {
+    private boolean isNonZoneSpecificRequest(final URI requestUri) {
         boolean result = false;
 
         String requestUriString = requestUri.normalize().toString();
-        
-        if (defaultZoneConfig.getAllowedUriPatterns() != null) {
-            for (String pattern : defaultZoneConfig.getAllowedUriPatterns()) {
+
+        if (this.defaultZoneConfig.getAllowedUriPatterns() != null) {
+            for (String pattern : this.defaultZoneConfig.getAllowedUriPatterns()) {
                 if (this.pathMatcher.match(pattern, requestUriString)) {
                     result = true;
                     break;
@@ -188,7 +187,7 @@ public abstract class AbstractZoneAwareTokenService implements ResourceServerTok
         return this.defaultFastTokenService;
     }
 
-    public void setDefaultFastTokenService(FastTokenServices defaultFastTokenService) {
+    public void setDefaultFastTokenService(final FastTokenServices defaultFastTokenService) {
         this.defaultFastTokenService = defaultFastTokenService;
     }
 
@@ -204,8 +203,8 @@ public abstract class AbstractZoneAwareTokenService implements ResourceServerTok
         this.serviceZoneHeaders = serviceZoneHeaders;
     }
 
-    /* Package Private */ List<String> getServiceZoneHeaderList(final String serviceZoneHeaders) {
-        return Arrays.asList(serviceZoneHeaders.split(","));
+    /* Package Private */ List<String> getServiceZoneHeaderList() {
+        return Arrays.asList(this.serviceZoneHeaders.split(","));
     }
 
     @Required

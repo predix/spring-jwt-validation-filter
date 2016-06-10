@@ -1,6 +1,6 @@
 /*******************************************************************************
  *     Cloud Foundry
- *     Copyright (c) [2009-2014] Pivotal Software, Inc. All Rights Reserved.
+ *     Copyright 2009, 2016-2014] Pivotal Software, Inc. All Rights Reserved.
  *
  *     This product is licensed to you under the Apache License, Version 2.0 (the "License").
  *     You may not use this product except in compliance with the License.
@@ -14,15 +14,14 @@ package com.ge.predix.uaa.token.lib;
 
 /**
  * <p>
- * Constants that can be used to work with claims from OAuth2 Bearer and OpenID
- * Connect tokens
+ * Constants that can be used to work with claims from OAuth2 Bearer and OpenID Connect tokens.
  * </p>
  *
  * @author Joel D'sa
  * @author Dave Syer
  *
  */
-public class Claims {
+public final class Claims {
     public static final String USER_ID = "user_id";
     public static final String USER_NAME = "user_name";
     public static final String NAME = "name";
@@ -45,4 +44,8 @@ public class Claims {
     public static final String AUTH_TIME = "auth_time";
     public static final String ZONE_ID = "zid";
     public static final String REVOCATION_SIGNATURE = "rev_sig";
+
+    private Claims() {
+        //prevent instantiation
+    }
 }

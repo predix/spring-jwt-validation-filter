@@ -1,3 +1,18 @@
+/*******************************************************************************
+ * Copyright 2016 General Electric Company.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *******************************************************************************/
 package com.ge.predix.uaa.token.lib;
 
 import static com.ge.predix.uaa.token.lib.Claims.ADDITIONAL_AZ_ATTR;
@@ -107,13 +122,14 @@ public class TestTokenUtil {
     }
 
     public String mockAccessToken(final int validitySeconds, final String zoneUserScope) {
-        Collection<GrantedAuthority> clientScopes = Arrays
-                .asList(new GrantedAuthority[] { new SimpleGrantedAuthority("uaa.resource"), new SimpleGrantedAuthority(zoneUserScope) });
+        Collection<GrantedAuthority> clientScopes = Arrays.asList(new GrantedAuthority[] {
+                new SimpleGrantedAuthority("uaa.resource"), new SimpleGrantedAuthority(zoneUserScope) });
         Set<String> requestedScopes = new HashSet<>(Arrays.asList(new String[] { "openid", zoneUserScope }));
         Set<String> resourceIds = new HashSet<>(Arrays.asList(new String[] { "none" }));
-        DefaultOAuth2AccessToken openIdToken = createAccessToken(TOKEN_ISSUER_ID, "1adc931e-d65f-4357-b90d-dd4131b8749a",
-                "marissa", "marissa@test.com", validitySeconds, clientScopes, requestedScopes, "cf", resourceIds,
-                "passsword", null, null, null, null, System.currentTimeMillis(), "uaa");
+        DefaultOAuth2AccessToken openIdToken = createAccessToken(TOKEN_ISSUER_ID,
+                "1adc931e-d65f-4357-b90d-dd4131b8749a", "marissa", "marissa@test.com", validitySeconds, clientScopes,
+                requestedScopes, "cf", resourceIds, "passsword", null, null, null, null, System.currentTimeMillis(),
+                "uaa");
         return openIdToken.getValue();
     }
 

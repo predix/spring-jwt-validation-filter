@@ -1,3 +1,18 @@
+/*******************************************************************************
+ * Copyright 2016 General Electric Company.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *******************************************************************************/
 package com.ge.predix.uaa.token.lib;
 
 import static org.mockito.Mockito.when;
@@ -15,7 +30,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.oauth2.common.exceptions.InvalidRequestException;
 import org.springframework.security.oauth2.common.exceptions.InvalidTokenException;
 import org.springframework.security.oauth2.provider.OAuth2Authentication;
 import org.springframework.web.client.RestTemplate;
@@ -24,7 +38,7 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 @Test
-public class ZacTokenServiceTest  {
+public class ZacTokenServiceTest {
 
     private static final String PREDIX_ZONE_HEADER_NAME = "Predix-Zone-Id";
     private final TestTokenUtil tokenUtil = new TestTokenUtil();
@@ -32,7 +46,7 @@ public class ZacTokenServiceTest  {
     private static final String BASE_DOMAIN = "localhost";
     private static final String SERVICEID = "acs";
     private static final String DEFAULT_TRUSTED_ISSUER = "https://issuer.com/oauth/token";
-    
+
     public void testLoadAuthentication() {
         // testing when zone id is not null
         String zoneUserScope = SERVICEID + ".zones." + ZONE + ".user";
@@ -50,10 +64,10 @@ public class ZacTokenServiceTest  {
         String evilZoneUserScope = SERVICEID + ".zones." + ZONE + ".evilperson";
         loadAuthentication(ZONE, evilZoneUserScope);
     }
-    
+
     @Test(dataProvider = "zoneAuthRequestProvider")
-    public void testDefaultAndZoneSpecificResourceAuthorization(String zoneId, String requestUri, List<String> zoneUris,
-            String scope, boolean shouldSucceed) {
+    public void testDefaultAndZoneSpecificResourceAuthorization(final String zoneId, final String requestUri,
+            final List<String> zoneUris, final String scope, final boolean shouldSucceed) {
 
         try {
             OAuth2Authentication authn = loadAuthentication(zoneId, scope, requestUri, zoneUris);
@@ -67,50 +81,53 @@ public class ZacTokenServiceTest  {
             }
         }
     }
-    
+
     @DataProvider
     private Object[][] zoneAuthRequestProvider() {
-        
+
         return new Object[][] {
-            //non zone specific request, with zone id should fail
-            {ZONE, "/zone/a", Arrays.asList("/zone/**"), SERVICEID + ".zones." + ZONE + ".user", false},
-            
-            //Path Traversal Tests: non zone specific request, with zone id should fail
-            {ZONE, "/blah/../global/a", Arrays.asList("/global/**"), SERVICEID + ".zones." + ZONE + ".user", false},
-            {ZONE, "/blah/..\\global/a", Arrays.asList("/global/**"), SERVICEID + ".zones." + ZONE + ".user", false},
-            
-            //non zone specific request, with no zone id should pass
-            {null, "/zone/a", Arrays.asList("/zone/**"), "scope.none", true},
+                // non zone specific request, with zone id should fail
+                { ZONE, "/zone/a", Arrays.asList("/zone/**"), SERVICEID + ".zones." + ZONE + ".user", false },
 
-            //zone request, with zone id should pass
-            {ZONE, "/a", Arrays.asList("/zone/**"), SERVICEID + ".zones." + ZONE + ".user", true},
-            
-            //zone request, with zone id ,  with incorrect scope , should fail
-            {ZONE, "/a", Arrays.asList("/zone/**"), SERVICEID + ".zones." + ZONE + ".blah", false},
+                // Path Traversal Tests: non zone specific request, with zone id should fail
+                { ZONE, "/blah/../global/a", Arrays.asList("/global/**"), SERVICEID + ".zones." + ZONE + ".user",
+                        false },
+                { ZONE, "/blah/..\\global/a", Arrays.asList("/global/**"), SERVICEID + ".zones." + ZONE + ".user",
+                        false },
 
-            //zone request, with no zone id should fail
-            {null, "/a", Arrays.asList("/zone/**"), SERVICEID + ".zones." + ZONE + ".blah", false},
-            
-            //non-zone specific request with multiple uriPatterns, and pattern variations
-            {ZONE, "/v1/zone/a", Arrays.asList("/v1/zone/**", "/admin/**"), SERVICEID + ".zones." + ZONE + ".user", false},
-            {ZONE, "/admin/a", Arrays.asList("/zone/**", "/admin/**"), SERVICEID + ".zones." + ZONE + ".user", false},
+                // non zone specific request, with no zone id should pass
+                { null, "/zone/a", Arrays.asList("/zone/**"), "scope.none", true },
+
+                // zone request, with zone id should pass
+                { ZONE, "/a", Arrays.asList("/zone/**"), SERVICEID + ".zones." + ZONE + ".user", true },
+
+                // zone request, with zone id , with incorrect scope , should fail
+                { ZONE, "/a", Arrays.asList("/zone/**"), SERVICEID + ".zones." + ZONE + ".blah", false },
+
+                // zone request, with no zone id should fail
+                { null, "/a", Arrays.asList("/zone/**"), SERVICEID + ".zones." + ZONE + ".blah", false },
+
+                // non-zone specific request with multiple uriPatterns, and pattern variations
+                { ZONE, "/v1/zone/a", Arrays.asList("/v1/zone/**", "/admin/**"), SERVICEID + ".zones." + ZONE + ".user",
+                        false },
+                { ZONE, "/admin/a", Arrays.asList("/zone/**", "/admin/**"), SERVICEID + ".zones." + ZONE + ".user",
+                        false },
 
         };
-        
+
     }
-    
-    
+
     private OAuth2Authentication loadAuthentication(final String zoneName, final String zoneUserScope) {
-        return loadAuthentication(zoneName,  zoneUserScope, "/test/resource",  Arrays.asList("/zone/**"));
+        return loadAuthentication(zoneName, zoneUserScope, "/test/resource", Arrays.asList("/zone/**"));
     }
 
     @SuppressWarnings("unchecked")
     private OAuth2Authentication loadAuthentication(final String zoneName, final String zoneUserScope,
-            String requestUri, List<String> nonZoneUriPatterns) {
-        
+            final String requestUri, final List<String> nonZoneUriPatterns) {
+
         ZacTokenService zacTokenServices = new ZacTokenService();
         zacTokenServices.setServiceZoneHeaders(PREDIX_ZONE_HEADER_NAME);
-        
+
         Collection<GrantedAuthority> authorities = new HashSet<GrantedAuthority>();
         authorities.add(new SimpleGrantedAuthority(zoneUserScope));
 
@@ -139,34 +156,39 @@ public class ZacTokenServiceTest  {
         HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
         when(request.getServerName()).thenReturn("localhost");
         when(request.getHeader(PREDIX_ZONE_HEADER_NAME)).thenReturn(zoneName);
-        when(request.getRequestURI()).thenReturn(requestUri);        
+        when(request.getRequestURI()).thenReturn(requestUri);
         zacTokenServices.setRequest(request);
         RestTemplate restTemplateMock = Mockito.mock(RestTemplate.class);
         zacTokenServices.setOauth2RestTemplate(restTemplateMock);
         try {
             zacTokenServices.afterPropertiesSet();
-        } catch (Exception e) { }
+        } catch (Exception e) {
+            // do nothing
+        }
 
         when(restTemplateMock.getForEntity("null/v1/registration/" + SERVICEID + "/" + ZONE, TrustedIssuers.class))
                 .thenReturn(mockTrustedIssuersResponseEntity());
         String accessToken = this.tokenUtil.mockAccessToken(600, zoneUserScope);
         return zacTokenServices.loadAuthentication(accessToken);
     }
-    
-    private void assertAuthentication(OAuth2Authentication authentication, String zoneName) {
+
+    private void assertAuthentication(final OAuth2Authentication authentication, final String zoneName) {
         Assert.assertNotNull(authentication);
-        
+
         if (zoneName != null) {
-            //When zone is defined in request, authentication must be a ZoneOAuth2Authentication
-            Assert.assertEquals(((ZoneOAuth2Authentication)authentication).getZoneId(), zoneName);
+            // When zone is defined in request, authentication must be a ZoneOAuth2Authentication
+            Assert.assertEquals(((ZoneOAuth2Authentication) authentication).getZoneId(), zoneName);
         }
     }
-    
+
     public void testGetServiceHeaders() {
         ZacTokenService zts = new ZacTokenService();
-        Assert.assertEquals(zts.getServiceZoneHeaderList("a"),Arrays.asList("a"));
-        Assert.assertEquals(zts.getServiceZoneHeaderList("a,b"),Arrays.asList("a","b"));
-        Assert.assertEquals(zts.getServiceZoneHeaderList(""),Arrays.asList(""));
+        zts.setServiceZoneHeaders("a");
+        Assert.assertEquals(zts.getServiceZoneHeaderList(), Arrays.asList("a"));
+        zts.setServiceZoneHeaders("a,b");
+        Assert.assertEquals(zts.getServiceZoneHeaderList(), Arrays.asList("a", "b"));
+        zts.setServiceZoneHeaders("");
+        Assert.assertEquals(zts.getServiceZoneHeaderList(), Arrays.asList(""));
     }
 
     private static ResponseEntity<TrustedIssuers> mockTrustedIssuersResponseEntity() {

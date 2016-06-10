@@ -1,3 +1,18 @@
+/*******************************************************************************
+ * Copyright 2016 General Electric Company.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *******************************************************************************/
 package com.ge.predix.uaa.token.lib;
 
 import static com.ge.predix.uaa.token.lib.Claims.USER_ID;
@@ -17,6 +32,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.security.jwt.crypto.sign.InvalidSignatureException;
 import org.springframework.security.oauth2.common.exceptions.InvalidTokenException;
 import org.springframework.security.oauth2.provider.OAuth2Authentication;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import org.testng.annotations.Test;
 
@@ -33,7 +49,7 @@ public class FastTokenServiceTest {
 
     private final FastTokenServices services = new FastTokenServices();
 
-    private final Map<String, Object> body = new HashMap<String, Object>();
+    private final Map<String, Object> body = new HashMap<>();
 
     public FastTokenServiceTest() throws Exception {
 
@@ -43,7 +59,8 @@ public class FastTokenServiceTest {
         this.body.put(Claims.ISS, TOKEN_ISSUER_ID);
         this.body.put(Claims.USER_ID, "HDGFJSHGDF");
 
-        ParameterizedTypeReference<Map<String, Object>> typeRef = new ParameterizedTypeReference<Map<String, Object>>() {
+        ParameterizedTypeReference<Map<String, Object>> typeRef =
+                new ParameterizedTypeReference<Map<String, Object>>() {
             // Nothing to add.
         };
 
@@ -51,8 +68,8 @@ public class FastTokenServiceTest {
         Mockito.when(restTemplate.exchange(TOKEN_KEY_URL, HttpMethod.GET, null, typeRef))
                 .thenReturn(TestTokenUtil.mockTokenKeyResponseEntity());
         this.services.setRestTemplate(restTemplate);
-        
-        List<String> trustedIssuers = new ArrayList<String>();
+
+        List<String> trustedIssuers = new ArrayList<>();
         trustedIssuers.add(TOKEN_ISSUER_ID);
         this.services.setTrustedIssuers(trustedIssuers);
     }
@@ -83,7 +100,7 @@ public class FastTokenServiceTest {
         assertEquals("1adc931e-d65f-4357-b90d-dd4131b8749a",
                 ((RemoteUserAuthentication) result.getUserAuthentication()).getId());
         assertNotNull(result.getOAuth2Request().getRequestParameters());
-  
+
     }
 
     /**
@@ -113,7 +130,7 @@ public class FastTokenServiceTest {
         String accessToken = this.testTokenUtil.mockAccessToken(System.currentTimeMillis() + 240000, 60);
         this.services.loadAuthentication(accessToken);
     }
-    
+
     /**
      * Tests that null token issues an InvalidTokenException.
      */
@@ -147,6 +164,27 @@ public class FastTokenServiceTest {
 
         // We've tampered the token so this should fail.
         this.services.loadAuthentication(accessToken);
+    }
+
+    /**
+     * Tests that connection error while retrieving token key issues RestClientException.
+     */
+    @SuppressWarnings("unchecked")
+    @Test(expectedExceptions = RestClientException.class)
+    public void testLoadAuthenticationWithConnectionTimeout() throws Exception {
+        String accessToken = this.testTokenUtil.mockAccessToken(60);
+
+        FastTokenServices services = new FastTokenServices();
+        ParameterizedTypeReference<Map<String, Object>> typeRef =
+                new ParameterizedTypeReference<Map<String, Object>>() {
+            // Nothing to add.
+        };
+        RestTemplate restTemplate = Mockito.mock(RestTemplate.class);
+        Mockito.when(restTemplate.exchange(TOKEN_KEY_URL, HttpMethod.GET, null, typeRef))
+                .thenThrow(RestClientException.class);
+        services.setRestTemplate(restTemplate);
+
+        services.loadAuthentication(accessToken);
     }
 
     /**
