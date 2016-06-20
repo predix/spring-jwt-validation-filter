@@ -31,7 +31,7 @@ public class ZacTokenService extends AbstractZoneAwareTokenService implements In
 
     private String zacUrl;
 
-    @Value("${ISSUERS_TTL_SECONDS:300}")
+    @Value("${ISSUERS_TTL_SECONDS:86400}")
     private long issuersTtlSeconds;
 
     @Override
