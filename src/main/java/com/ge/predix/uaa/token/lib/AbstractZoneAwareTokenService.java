@@ -91,8 +91,7 @@ public abstract class AbstractZoneAwareTokenService implements ResourceServerTok
     private OAuth2Authentication authenticateNonZoneSpecificRequest(final String accessToken) {
         OAuth2Authentication authentication;
         if (this.defaultFastTokenService == null) {
-            this.defaultFastTokenService = createFastTokenService(
-                    Arrays.asList(this.defaultZoneConfig.getTrustedIssuerId()));
+            this.defaultFastTokenService = createFastTokenService(this.defaultZoneConfig.getTrustedIssuerIds());
         }
         authentication = this.defaultFastTokenService.loadAuthentication(accessToken);
         return authentication;
