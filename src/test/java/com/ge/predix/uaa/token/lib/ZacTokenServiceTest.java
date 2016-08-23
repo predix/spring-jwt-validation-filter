@@ -24,6 +24,7 @@ import java.util.List;
 
 import javax.servlet.http.HttpServletRequest;
 
+import org.apache.commons.lang.StringUtils;
 import org.mockito.Matchers;
 import org.mockito.Mockito;
 import org.springframework.http.HttpStatus;
@@ -46,6 +47,8 @@ public class ZacTokenServiceTest {
     private static final String BASE_DOMAIN = "localhost";
     private static final String SERVICEID = "acs";
     private static final String DEFAULT_TRUSTED_ISSUER = "https://issuer.com/oauth/token";
+    private static final List<String> ZONE_TRUSTED_ISSUERS = Arrays.asList("http://myuaa.com",
+            "http://localhost:8080/uaa/oauth/token");
 
     public void testLoadAuthentication() {
         // testing when zone id is not null
@@ -149,7 +152,16 @@ public class ZacTokenServiceTest {
         zacTokenServices.setServiceId(SERVICEID);
 
         DefaultZoneConfiguration zoneConfig = new DefaultZoneConfiguration();
-        zoneConfig.setTrustedIssuerId(DEFAULT_TRUSTED_ISSUER);
+
+        List<String> trustedIssuers;
+        // Non zone specific request, using default issuer
+        if (StringUtils.isEmpty(zoneName)) {
+            trustedIssuers = Arrays.asList(DEFAULT_TRUSTED_ISSUER);
+        // Zone specific request, using the issuers returned by mockTrustedIssuersResponseEntity
+        } else {
+            trustedIssuers = ZONE_TRUSTED_ISSUERS;
+        }
+        zoneConfig.setTrustedIssuerIds(trustedIssuers);
         zacTokenServices.setDefaultZoneConfig(zoneConfig);
         zoneConfig.setAllowedUriPatterns(nonZoneUriPatterns);
 
@@ -163,13 +175,17 @@ public class ZacTokenServiceTest {
         try {
             zacTokenServices.afterPropertiesSet();
         } catch (Exception e) {
-            // do nothing
+            Assert.fail("Unexpected exception after properties set on zacTokenServices " + e.getMessage());
         }
 
         when(restTemplateMock.getForEntity("null/v1/registration/" + SERVICEID + "/" + ZONE, TrustedIssuers.class))
                 .thenReturn(mockTrustedIssuersResponseEntity());
         String accessToken = this.tokenUtil.mockAccessToken(600, zoneUserScope);
-        return zacTokenServices.loadAuthentication(accessToken);
+        OAuth2Authentication loadAuthentication = zacTokenServices.loadAuthentication(accessToken);
+
+        // Making sure we are passing the right set of issuers to the FastTokenServices
+        Mockito.verify(mockFTS).setTrustedIssuers(trustedIssuers);
+        return loadAuthentication;
     }
 
     private void assertAuthentication(final OAuth2Authentication authentication, final String zoneName) {
@@ -192,8 +208,7 @@ public class ZacTokenServiceTest {
     }
 
     private static ResponseEntity<TrustedIssuers> mockTrustedIssuersResponseEntity() {
-        TrustedIssuers trustedIssuers = new TrustedIssuers(
-                Arrays.asList("http://myuaa.com", "http://localhost:8080/uaa/oauth/token"));
+        TrustedIssuers trustedIssuers = new TrustedIssuers(ZONE_TRUSTED_ISSUERS);
         return new ResponseEntity<TrustedIssuers>(trustedIssuers, HttpStatus.OK);
     }
 
