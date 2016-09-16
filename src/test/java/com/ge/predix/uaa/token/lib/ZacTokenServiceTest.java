@@ -31,8 +31,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.oauth2.common.exceptions.InvalidRequestException;
 import org.springframework.security.oauth2.common.exceptions.InvalidTokenException;
 import org.springframework.security.oauth2.provider.OAuth2Authentication;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -49,6 +51,7 @@ public class ZacTokenServiceTest {
     private static final String DEFAULT_TRUSTED_ISSUER = "https://issuer.com/oauth/token";
     private static final List<String> ZONE_TRUSTED_ISSUERS = Arrays.asList("http://myuaa.com",
             "http://localhost:8080/uaa/oauth/token");
+    private static final String INVALID_ZONE = "invalidtestzone";
 
     public void testLoadAuthentication() {
         // testing when zone id is not null
@@ -66,6 +69,14 @@ public class ZacTokenServiceTest {
         // testing when scope is unauthorized
         String evilZoneUserScope = SERVICEID + ".zones." + ZONE + ".evilperson";
         loadAuthentication(ZONE, evilZoneUserScope);
+    }
+
+    @Test(
+            expectedExceptions = InvalidRequestException.class,
+            expectedExceptionsMessageRegExp = "Invalid zone: invalidtestzone")
+    public void testLoadAuthenticationWhenZoneDoesNotExist() {
+        // zone does not exist
+        loadAuthentication(INVALID_ZONE, "some-other-scope", "/a" + INVALID_ZONE, Arrays.asList("/zone/**"));
     }
 
     @Test(dataProvider = "zoneAuthRequestProvider")
@@ -180,6 +191,10 @@ public class ZacTokenServiceTest {
 
         when(restTemplateMock.getForEntity("null/v1/registration/" + SERVICEID + "/" + ZONE, TrustedIssuers.class))
                 .thenReturn(mockTrustedIssuersResponseEntity());
+
+        when( restTemplateMock.getForEntity("null/v1/registration/" + SERVICEID + "/" + INVALID_ZONE, TrustedIssuers.class))
+                .thenThrow(new HttpClientErrorException(HttpStatus.NOT_FOUND));
+
         String accessToken = this.tokenUtil.mockAccessToken(600, zoneUserScope);
         OAuth2Authentication loadAuthentication = zacTokenServices.loadAuthentication(accessToken);
 
