@@ -21,6 +21,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Required;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -30,6 +31,7 @@ import org.springframework.security.oauth2.common.exceptions.InvalidTokenExcepti
 import org.springframework.security.oauth2.provider.OAuth2Authentication;
 import org.springframework.security.oauth2.provider.token.ResourceServerTokenServices;
 import org.springframework.util.AntPathMatcher;
+import org.springframework.web.client.HttpStatusCodeException;
 
 /**
  *
@@ -81,7 +83,15 @@ public abstract class AbstractZoneAwareTokenService implements ResourceServerTok
             if (zoneId == null) {
                 throw new InvalidRequestException("No zone specified for zone specific request:  " + requestUri);
             } else {
-                authentication = authenticateZoneSpecificRequest(accessToken, zoneId);
+                try {
+                    authentication = authenticateZoneSpecificRequest(accessToken, zoneId);
+                } catch (HttpStatusCodeException e) {
+                    // Translate 404 from ZAC into InvalidRequestException
+                    if (e.getStatusCode() != HttpStatus.NOT_FOUND) {
+                        throw e;
+                    }
+                    throw new InvalidRequestException("Invalid zone: " + zoneId);
+                }
             }
         }
 
