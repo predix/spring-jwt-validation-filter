@@ -18,7 +18,7 @@ package com.ge.predix.uaa.token.lib;
 public class ZoneAwareFastTokenService extends AbstractZoneAwareTokenService {
 
     @Override
-    protected FastTokenServices getOrCeateZoneTokenService(final String zoneId) {
+    protected FastTokenServices getOrCreateZoneTokenService(final String zoneId) {
         return getDefaultFastTokenService();
     }
 }
