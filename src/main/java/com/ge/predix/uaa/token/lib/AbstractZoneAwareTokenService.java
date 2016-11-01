@@ -13,10 +13,12 @@ package com.ge.predix.uaa.token.lib;
 import java.net.URI;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 
 import javax.servlet.http.HttpServletRequest;
 
+import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -52,11 +54,11 @@ public abstract class AbstractZoneAwareTokenService implements ResourceServerTok
     @Autowired(required = true)
     private HttpServletRequest request;
 
-    private String serviceBaseDomain;
+    private List<String> serviceZoneHeadersList = Arrays.asList("Predix-Zone-Id");
+
+    private List<String> serviceBaseDomainList;
 
     private String serviceId;
-
-    private String serviceZoneHeaders = "Predix-Zone-Id"; // Default value
 
     private boolean storeClaims = false;
 
@@ -67,8 +69,8 @@ public abstract class AbstractZoneAwareTokenService implements ResourceServerTok
             throws AuthenticationException, InvalidTokenException {
 
         // Get zone id being requested from HTTP request
-        String zoneId = HttpServletRequestUtil.getZoneName(this.request, this.serviceBaseDomain,
-                getServiceZoneHeaderList());
+        String zoneId = HttpServletRequestUtil.getZoneName(this.request, this.getServiceBaseDomainList(),
+                this.getServiceZoneHeadersList());
 
         URI requestUri = URI.create(this.request.getRequestURI());
 
@@ -109,7 +111,7 @@ public abstract class AbstractZoneAwareTokenService implements ResourceServerTok
 
     private OAuth2Authentication authenticateZoneSpecificRequest(final String accessToken, final String zoneId) {
         OAuth2Authentication authentication;
-        FastTokenServices tokenServices = getOrCeateZoneTokenService(zoneId);
+        FastTokenServices tokenServices = getOrCreateZoneTokenService(zoneId);
         authentication = tokenServices.loadAuthentication(accessToken);
         assertUserZoneAccess(authentication, zoneId);
 
@@ -135,7 +137,7 @@ public abstract class AbstractZoneAwareTokenService implements ResourceServerTok
         return result;
     }
 
-    protected abstract FastTokenServices getOrCeateZoneTokenService(final String zoneId);
+    protected abstract FastTokenServices getOrCreateZoneTokenService(final String zoneId);
 
     private void assertUserZoneAccess(final OAuth2Authentication authentication, final String zoneId) {
         Collection<? extends GrantedAuthority> authenticationAuthorities = authentication.getAuthorities();
@@ -205,20 +207,32 @@ public abstract class AbstractZoneAwareTokenService implements ResourceServerTok
     }
 
     public void setServiceBaseDomain(final String serviceBaseDomain) {
-        this.serviceBaseDomain = serviceBaseDomain;
+        this.serviceBaseDomainList = splitCSV(serviceBaseDomain);
     }
 
     public void setServiceZoneHeaders(final String serviceZoneHeaders) {
-        this.serviceZoneHeaders = serviceZoneHeaders;
+        this.serviceZoneHeadersList = splitCSV(serviceZoneHeaders);
     }
 
-    /* Package Private */ List<String> getServiceZoneHeaderList() {
-        return Arrays.asList(this.serviceZoneHeaders.split(","));
+    private List<String> splitCSV(final String csvString) {
+        if (!StringUtils.isBlank(csvString)) {
+            return Arrays.asList(csvString.split(","));
+        } else {
+            return Collections.emptyList();
+        }
     }
 
     @Required
     public void setDefaultZoneConfig(final DefaultZoneConfiguration defaultZoneConfig) {
         this.defaultZoneConfig = defaultZoneConfig;
+    }
+
+    public List<String> getServiceZoneHeadersList() {
+        return this.serviceZoneHeadersList;
+    }
+
+    public List<String> getServiceBaseDomainList() {
+        return this.serviceBaseDomainList;
     }
 
 }

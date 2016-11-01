@@ -38,10 +38,10 @@ public final class HttpServletRequestUtil {
         if (requestHostname.equals(baseDomain)) {
             return "";
         }
-
-        String regexPattern = "^(.*?)\\." + Pattern.quote(baseDomain) + "$";
+        String regexPattern = "^(.*?)\\." + Pattern.quote(baseDomain.toLowerCase()) + "$";
         Pattern pattern = Pattern.compile(regexPattern);
-        Matcher matcher = pattern.matcher(requestHostname);
+
+        Matcher matcher = pattern.matcher(requestHostname.toLowerCase());
         if (!matcher.matches()) {
             // There is no zone scope for this request. Return null
             return null;
@@ -58,12 +58,18 @@ public final class HttpServletRequestUtil {
      *
      * @param headerNames
      */
-    public static String getZoneName(final HttpServletRequest req, final String serviceBaseDomain,
+    public static String getZoneName(final HttpServletRequest req, final List<String> serviceBaseDomainList,
             final List<String> headerNames) {
         String zoneName = null;
 
-        if (!StringUtils.isEmpty(serviceBaseDomain)) {
-            zoneName = getZoneNameFromRequestHostName(req.getServerName(), serviceBaseDomain);
+        if (serviceBaseDomainList != null) {
+            for (String serviceBaseDomain : serviceBaseDomainList) {
+                zoneName = getZoneNameFromRequestHostName(req.getServerName(), serviceBaseDomain);
+                if (zoneName != null) {
+                    // If we have the zone name then break the loop
+                    break;
+                }
+            }
         }
 
         if (StringUtils.isEmpty(zoneName)) {
