@@ -94,7 +94,8 @@ public abstract class AbstractZoneAwareTokenService implements ResourceServerTok
                     if (e.getStatusCode() != HttpStatus.NOT_FOUND) {
                         throw e;
                     }
-                    throw new InvalidRequestException("Authentication of request for zone " + zoneId + " failed.");
+                    throw new InvalidRequestException(
+                            "Authentication of request for zone " + zoneId + " failed.");
                 }
             }
         }
