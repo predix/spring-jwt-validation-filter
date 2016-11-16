@@ -51,7 +51,6 @@ import org.springframework.security.oauth2.provider.client.BaseClientDetails;
 import org.springframework.security.oauth2.provider.token.ResourceServerTokenServices;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
-import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestOperations;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -231,7 +230,7 @@ public class FastTokenServices implements ResourceServerTokenServices {
         Map<String, Object> responseMap = null;
         try {
             responseMap = this.restTemplate.exchange(tokenKeyUrl, HttpMethod.GET, null, typeRef).getBody();
-        } catch (RestClientException e) {
+        } catch (Exception e) {
             LOG.error("Unable to retrieve the token public key. " + e.getMessage());
             throw e;
         }
