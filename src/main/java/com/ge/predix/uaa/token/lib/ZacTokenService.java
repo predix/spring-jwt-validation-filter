@@ -13,6 +13,8 @@ package com.ge.predix.uaa.token.lib;
 import java.util.Map;
 
 import org.apache.commons.collections4.map.PassiveExpiringMap;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Required;
 import org.springframework.beans.factory.annotation.Value;
@@ -24,6 +26,8 @@ import org.springframework.web.client.RestOperations;
  * @author 212304931
  */
 public class ZacTokenService extends AbstractZoneAwareTokenService implements InitializingBean {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(ZacTokenService.class);
 
     private Map<String, FastTokenServices> tokenServicesMap;
 
@@ -38,11 +42,19 @@ public class ZacTokenService extends AbstractZoneAwareTokenService implements In
     protected FastTokenServices getOrCreateZoneTokenService(final String zoneId) {
         FastTokenServices tokenServices;
         tokenServices = this.tokenServicesMap.get(zoneId);
+        String trustedIssuersURL = this.zacUrl + "/v1/registration/" + getServiceId() + "/" + zoneId;
         if (null == tokenServices) {
-            final ResponseEntity<TrustedIssuers> responseEntity = this.oauth2RestTemplate.getForEntity(
-                    this.zacUrl + "/v1/registration/" + getServiceId() + "/" + zoneId, TrustedIssuers.class);
-            tokenServices = createFastTokenService(responseEntity.getBody().getTrustedIssuerIds());
-            this.tokenServicesMap.put(zoneId, tokenServices);
+            try {
+                final ResponseEntity<TrustedIssuers> responseEntity = this.oauth2RestTemplate
+                        .getForEntity(trustedIssuersURL, TrustedIssuers.class);
+                tokenServices = createFastTokenService(responseEntity.getBody().getTrustedIssuerIds());
+                this.tokenServicesMap.put(zoneId, tokenServices);
+            } catch (Exception e) {
+                LOGGER.error("Failed to get trusted issuers from: " + trustedIssuersURL);
+                LOGGER.error(e.getMessage());
+                throw e;
+            }
+
         }
         return tokenServices;
     }
