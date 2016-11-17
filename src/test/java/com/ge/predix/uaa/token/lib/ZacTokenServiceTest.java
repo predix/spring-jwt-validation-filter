@@ -89,6 +89,14 @@ public class ZacTokenServiceTest {
                 Arrays.asList("/zone/**"));
     }
 
+    @Test(
+            expectedExceptions = InvalidRequestException.class,
+            expectedExceptionsMessageRegExp = "Invalid zone: invalidtestzone")
+    public void testLoadAuthenticationWhenZoneDoesNotExist() {
+        // zone does not exist
+        loadAuthentication(INVALID_ZONE, "some-other-scope", "/a" + INVALID_ZONE, Arrays.asList("/zone/**"));
+    }
+
     @Test(dataProvider = "zoneAuthRequestProvider")
     public void testDefaultAndZoneSpecificResourceAuthorization(final String zoneId, final String requestUri,
             final List<String> zoneUris, final String scope, final boolean shouldSucceed) {
@@ -189,15 +197,23 @@ public class ZacTokenServiceTest {
         when(restTemplateMock.getForEntity("null/v1/registration/" + SERVICEID + "/" + ZONE, TrustedIssuers.class))
                 .thenReturn(mockTrustedIssuersResponseEntity());
 
+<<<<<<< HEAD
         when(restTemplateMock.getForEntity("null/v1/registration/" + SERVICEID + "/" + INVALID_ZONE,
                 TrustedIssuers.class)).thenThrow(new HttpClientErrorException(HttpStatus.NOT_FOUND));
 
         String accessToken = this.tokenUtil.mockAccessToken(600, userScopes);
+=======
+        when( restTemplateMock.getForEntity("null/v1/registration/" + SERVICEID + "/" + INVALID_ZONE, TrustedIssuers.class))
+                .thenThrow(new HttpClientErrorException(HttpStatus.NOT_FOUND));
+
+        String accessToken = this.tokenUtil.mockAccessToken(600, zoneUserScope);
+>>>>>>> master
         OAuth2Authentication loadAuthentication = zacTokenServices.loadAuthentication(accessToken);
 
         // Making sure we are passing the right set of issuers to the FastTokenServices
         Mockito.verify(mockFTS).setTrustedIssuers(trustedIssuers);
         return loadAuthentication;
+<<<<<<< HEAD
     }
 
     private HttpServletRequest mockHttpRequest(String requestZoneName, String requestUri) {
@@ -237,6 +253,8 @@ public class ZacTokenServiceTest {
         Mockito.when(mockFTS.loadAuthentication(Matchers.anyString())).thenReturn(oauth2Authentication);
         return mockFTS;
 
+=======
+>>>>>>> master
     }
 
     private void assertAuthentication(final OAuth2Authentication authentication, final String zoneName) {
