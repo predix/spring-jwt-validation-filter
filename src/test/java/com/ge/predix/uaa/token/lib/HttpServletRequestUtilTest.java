@@ -16,6 +16,7 @@
 package com.ge.predix.uaa.token.lib;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import org.springframework.mock.web.MockHttpServletRequest;
@@ -98,27 +99,48 @@ public class HttpServletRequestUtilTest {
         Assert.assertNull(HttpServletRequestUtil.getZoneNameFromRequestHostName(hostname, domain));
     }
 
-    @Test(dataProvider = "headersDataProvider")
-    public void testGetSubdomainFromOneHeader(final String requestHeader, final List<String> serviceConfigHeaders,
-            final String headerValue, final String subdomainValue) {
+    @Test(dataProvider = "headersAndDomainDataProvider")
+    public void testGetZoneNameWithHeaderAndBaseDomains(final String requestHostname, final String requestHeader,
+            final String requestHeaderValue, final List<String> serviceBaseDomains,
+            final List<String> serviceConfigHeaders, final String expectedZone) {
         MockHttpServletRequest req = new MockHttpServletRequest();
-        req.addHeader(requestHeader, headerValue);
-        String subdomain = HttpServletRequestUtil.getZoneName(req, null, serviceConfigHeaders);
-        Assert.assertEquals(subdomain, subdomainValue);
+        req.setServerName(requestHostname);
+        req.addHeader(requestHeader, requestHeaderValue);
+        String actualZone = HttpServletRequestUtil.getZoneName(req, serviceBaseDomains, serviceConfigHeaders);
+        Assert.assertEquals(actualZone, expectedZone);
     }
 
-    @DataProvider(name = "headersDataProvider")
-    private Object[][] headersDataProvider() {
+    @DataProvider(name = "headersAndDomainDataProvider")
+    private Object[][] headersAndDomainDataProvider() {
         return new Object[][] {
-                { "Predix-Zone-Id", Arrays.asList("Predix-Zone-Id"), "predix-test-subdomain", "predix-test-subdomain" },
-                // case-insensitive test
-                { "Predix-Zone-Id", Arrays.asList("predix-zone-id"), "predix-test-subdomain", "predix-test-subdomain" },
-                { "predix-zone-id", Arrays.asList("Predix-Zone-Id"), "predix-test-subdomain", "predix-test-subdomain" },
-
-                { "ACS-Zone-Subdomain", Arrays.asList("Predix-Zone-Id", "ACS-Zone-Subdomain"), "acs-test-subdomain",
-                        "acs-test-subdomain" },
-                { "Predix-Zone-Id", Arrays.asList(""), "", null },
-                { "unrecognized-headaer", Arrays.asList("Predix-Zone-Id", "ACS-Zone-Subdomain"), "", null },
-                { "Predix-Zone-Id", Arrays.asList("Unrecognized-Header"), "some-value", null } };
+                // headers only configured
+                { null, "Predix-Zone-Id", "predix-test-subdomain", Collections.emptyList(),
+                        Arrays.asList("Predix-Zone-Id"), "predix-test-subdomain" },
+                { null, "Predix-Zone-Id", "predix-test-subdomain", Collections.emptyList(),
+                        Arrays.asList("predix-zone-id"), "predix-test-subdomain" },
+                { null, "predix-zone-id", "predix-test-subdomain", Collections.emptyList(),
+                        Arrays.asList("Predix-Zone-Id"), "predix-test-subdomain" },
+                { null, "ACS-Zone-Subdomain", "acs-test-subdomain", null,
+                        Arrays.asList("Predix-Zone-Id", "ACS-Zone-Subdomain"), "acs-test-subdomain" },
+                { null, "Predix-Zone-Id", "", null, Arrays.asList(""), null },
+                { null, "unrecognized-headaer", "", null, Arrays.asList("Predix-Zone-Id", "ACS-Zone-Subdomain"), null },
+                { null, "Predix-Zone-Id", "some-value", null, Arrays.asList("Unrecognized-Header"), null },
+                // domains only configured
+                { "zone1.acs.com", "Predix-Zone-Id", "DONTUSE", Arrays.asList("acs.com"), Collections.emptyList(),
+                        "zone1" },
+                { "zone1.acs.com", "Predix-Zone-Id", "DONTUSE", Arrays.asList("acs.com", "guardians.com"),
+                        Collections.emptyList(), "zone1" },
+                { "zone2.guardians.com", "Predix-Zone-Id", "DONTUSE", Arrays.asList("acs.com", "guardians.com"),
+                        Collections.emptyList(), "zone2" },
+                { "guardians.com", "Predix-Zone-Id", "DONTUSE", Arrays.asList("acs.com", "guardians.com"),
+                        Collections.emptyList(), null },
+                // headers and domains configured
+                { "zone1.Guardians.com", "Predix-Zone-Id", "DONTUSE", Arrays.asList("acs.com", "Guardians.com"),
+                        Arrays.asList("Predix-Zone-Id", "ACS-Zone-Subdomain"), "zone1" },
+                { "zone1.Guardians.com", "Predix-Zone-Id", "DONTUSE", Arrays.asList("acs.com", "guardians.com"),
+                        Arrays.asList("Predix-Zone-Id", "ACS-Zone-Subdomain"), "zone1" },
+                { "zone1.Guardians.com", "Predix-Zone-Id", "DONTUSE", Collections.emptyList(), Collections.emptyList(),
+                        null } };
     }
+
 }
