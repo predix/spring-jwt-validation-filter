@@ -13,14 +13,17 @@ package com.ge.predix.uaa.token.lib;
 import java.net.URI;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 
 import javax.servlet.http.HttpServletRequest;
 
+import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Required;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -30,6 +33,7 @@ import org.springframework.security.oauth2.common.exceptions.InvalidTokenExcepti
 import org.springframework.security.oauth2.provider.OAuth2Authentication;
 import org.springframework.security.oauth2.provider.token.ResourceServerTokenServices;
 import org.springframework.util.AntPathMatcher;
+import org.springframework.web.client.HttpStatusCodeException;
 
 /**
  *
@@ -50,11 +54,11 @@ public abstract class AbstractZoneAwareTokenService implements ResourceServerTok
     @Autowired(required = true)
     private HttpServletRequest request;
 
-    private String serviceBaseDomain;
+    private List<String> serviceZoneHeadersList = Arrays.asList("Predix-Zone-Id");
+
+    private List<String> serviceBaseDomainList;
 
     private String serviceId;
-
-    private String serviceZoneHeaders = "Predix-Zone-Id"; // Default value
 
     private boolean storeClaims = false;
 
@@ -65,8 +69,8 @@ public abstract class AbstractZoneAwareTokenService implements ResourceServerTok
             throws AuthenticationException, InvalidTokenException {
 
         // Get zone id being requested from HTTP request
-        String zoneId = HttpServletRequestUtil.getZoneName(this.request, this.serviceBaseDomain,
-                getServiceZoneHeaderList());
+        String zoneId = HttpServletRequestUtil.getZoneName(this.request, this.getServiceBaseDomainList(),
+                this.getServiceZoneHeadersList());
 
         URI requestUri = URI.create(this.request.getRequestURI());
 
@@ -81,7 +85,15 @@ public abstract class AbstractZoneAwareTokenService implements ResourceServerTok
             if (zoneId == null) {
                 throw new InvalidRequestException("No zone specified for zone specific request:  " + requestUri);
             } else {
-                authentication = authenticateZoneSpecificRequest(accessToken, zoneId);
+                try {
+                    authentication = authenticateZoneSpecificRequest(accessToken, zoneId);
+                } catch (HttpStatusCodeException e) {
+                    // Translate 404 from ZAC into InvalidRequestException
+                    if (e.getStatusCode() != HttpStatus.NOT_FOUND) {
+                        throw e;
+                    }
+                    throw new InvalidRequestException("Invalid zone: " + zoneId);
+                }
             }
         }
 
@@ -91,8 +103,7 @@ public abstract class AbstractZoneAwareTokenService implements ResourceServerTok
     private OAuth2Authentication authenticateNonZoneSpecificRequest(final String accessToken) {
         OAuth2Authentication authentication;
         if (this.defaultFastTokenService == null) {
-            this.defaultFastTokenService = createFastTokenService(
-                    Arrays.asList(this.defaultZoneConfig.getTrustedIssuerId()));
+            this.defaultFastTokenService = createFastTokenService(this.defaultZoneConfig.getTrustedIssuerIds());
         }
         authentication = this.defaultFastTokenService.loadAuthentication(accessToken);
         return authentication;
@@ -100,7 +111,7 @@ public abstract class AbstractZoneAwareTokenService implements ResourceServerTok
 
     private OAuth2Authentication authenticateZoneSpecificRequest(final String accessToken, final String zoneId) {
         OAuth2Authentication authentication;
-        FastTokenServices tokenServices = getOrCeateZoneTokenService(zoneId);
+        FastTokenServices tokenServices = getOrCreateZoneTokenService(zoneId);
         authentication = tokenServices.loadAuthentication(accessToken);
         assertUserZoneAccess(authentication, zoneId);
 
@@ -126,7 +137,7 @@ public abstract class AbstractZoneAwareTokenService implements ResourceServerTok
         return result;
     }
 
-    protected abstract FastTokenServices getOrCeateZoneTokenService(final String zoneId);
+    protected abstract FastTokenServices getOrCreateZoneTokenService(final String zoneId);
 
     private void assertUserZoneAccess(final OAuth2Authentication authentication, final String zoneId) {
         Collection<? extends GrantedAuthority> authenticationAuthorities = authentication.getAuthorities();
@@ -196,20 +207,32 @@ public abstract class AbstractZoneAwareTokenService implements ResourceServerTok
     }
 
     public void setServiceBaseDomain(final String serviceBaseDomain) {
-        this.serviceBaseDomain = serviceBaseDomain;
+        this.serviceBaseDomainList = splitCSV(serviceBaseDomain);
     }
 
     public void setServiceZoneHeaders(final String serviceZoneHeaders) {
-        this.serviceZoneHeaders = serviceZoneHeaders;
+        this.serviceZoneHeadersList = splitCSV(serviceZoneHeaders);
     }
 
-    /* Package Private */ List<String> getServiceZoneHeaderList() {
-        return Arrays.asList(this.serviceZoneHeaders.split(","));
+    private List<String> splitCSV(final String csvString) {
+        if (!StringUtils.isBlank(csvString)) {
+            return Arrays.asList(csvString.split(","));
+        } else {
+            return Collections.emptyList();
+        }
     }
 
     @Required
     public void setDefaultZoneConfig(final DefaultZoneConfiguration defaultZoneConfig) {
         this.defaultZoneConfig = defaultZoneConfig;
+    }
+
+    public List<String> getServiceZoneHeadersList() {
+        return this.serviceZoneHeadersList;
+    }
+
+    public List<String> getServiceBaseDomainList() {
+        return this.serviceBaseDomainList;
     }
 
 }

@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.commons.codec.binary.Base64;
+import org.junit.Assert;
 import org.mockito.Mockito;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpMethod;
@@ -116,19 +117,29 @@ public class FastTokenServiceTest {
     /**
      * Tests that an expired token issues an InvalidTokenException.
      */
-    @Test(expectedExceptions = InvalidTokenException.class)
+    @Test
     public void testLoadAuthenticationWithExpiredToken() throws Exception {
         String accessToken = this.testTokenUtil.mockAccessToken(System.currentTimeMillis() - 240000, 60);
-        this.services.loadAuthentication(accessToken);
+        try {
+            this.services.loadAuthentication(accessToken);
+            Assert.fail("Expected InvalidTokenException for expired token.");
+        } catch (InvalidTokenException e) {
+            System.out.println(e.getMessage());
+        }
     }
 
     /**
      * Tests that an token that is valid for future use issues an InvalidTokenException.
      */
-    @Test(expectedExceptions = InvalidTokenException.class)
+    @Test
     public void testLoadAuthenticationWithFutureToken() throws Exception {
         String accessToken = this.testTokenUtil.mockAccessToken(System.currentTimeMillis() + 240000, 60);
-        this.services.loadAuthentication(accessToken);
+        try {
+            this.services.loadAuthentication(accessToken);
+            Assert.fail("Expected InvalidTokenException for token issued in the future.");
+        } catch (InvalidTokenException e) {
+            System.out.println(e.getMessage());
+        }
     }
 
     /**

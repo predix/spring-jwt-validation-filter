@@ -191,11 +191,15 @@ public class FastTokenServices implements ResourceServerTokenServices {
 
         Date currentDate = new Date();
         if (iatDate != null && iatDate.after(currentDate)) {
-            throw new InvalidTokenException("Token validity window is in the future.");
+            throw new InvalidTokenException(String.format(
+                    "Token validity window is in the future. Token is issued at [%s]. Current date is [%s]",
+                    iatDate.toString(), currentDate.toString()));
         }
 
         if (expDate != null && expDate.before(currentDate)) {
-            throw new InvalidTokenException("Token is expired");
+            throw new InvalidTokenException(
+                    String.format("Token is expired. Expiration date is [%s]. Current date is [%s]", expDate.toString(),
+                            currentDate.toString()));
         }
     }
 

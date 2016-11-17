@@ -72,6 +72,6 @@ ZAC for information needed on the token issuers trusted for that zone.
     <dependency>
         <groupId>com.ge.predix</groupId>
         <artifactId>uaa-token-lib</artifactId>
-        <version>3.1.3</version>
+        <version>3.2.0</version>
     </dependency>
 ```    

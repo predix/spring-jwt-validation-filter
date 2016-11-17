@@ -31,11 +31,11 @@ public class ZacTokenService extends AbstractZoneAwareTokenService implements In
 
     private String zacUrl;
 
-    @Value("${ISSUERS_TTL_SECONDS:300}")
+    @Value("${ISSUERS_TTL_SECONDS:86400}")
     private long issuersTtlSeconds;
 
     @Override
-    protected FastTokenServices getOrCeateZoneTokenService(final String zoneId) {
+    protected FastTokenServices getOrCreateZoneTokenService(final String zoneId) {
         FastTokenServices tokenServices;
         tokenServices = this.tokenServicesMap.get(zoneId);
         if (null == tokenServices) {
@@ -68,9 +68,17 @@ public class ZacTokenService extends AbstractZoneAwareTokenService implements In
         this.tokenServicesMap.remove(zoneId);
     }
 
+    private void checkIfZonePropertiesSet() {
+        if (this.getServiceBaseDomainList().isEmpty() && this.getServiceZoneHeadersList().isEmpty()) {
+            throw new IllegalStateException("ZacTokenService requires atleast one of the following properties to be"
+                    + "configured: serviceBaseDomain or serviceZoneHeaders .");
+        }
+    }
+
     @Override
     public void afterPropertiesSet() throws Exception {
         long timeToLiveMillis = this.issuersTtlSeconds * 1000;
         this.tokenServicesMap = new PassiveExpiringMap<>(timeToLiveMillis);
+        checkIfZonePropertiesSet();
     }
 }
