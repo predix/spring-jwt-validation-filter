@@ -149,9 +149,8 @@ public abstract class AbstractZoneAwareTokenService implements ResourceServerTok
         if (!authenticationAuthorities.contains(new SimpleGrantedAuthority(expectedScope))) {
             LOGGER.debug("Invalid token scope. Did not find expected scope: " + expectedScope);
             // This exception is translated to HTTP 401. InsufficientAuthenticationException results in 500
-            throw new InvalidTokenException(String.format(
-                    "Unauthorized zone access by principal: '%s' for zone: '%s' " + ", due to insufficient scope.",
-                    authentication.getPrincipal(), zoneId));
+            throw new InvalidTokenException(String.format("Unauthorized zone access by principal: '%s' for zone: '%s' "
+                    + ", due to insufficient scope.", authentication.getPrincipal(), zoneId));
         }
     }
 
