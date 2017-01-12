@@ -172,14 +172,11 @@ public class FastTokenServices implements ResourceServerTokenServices {
     }
 
     private void verifyIssuer(final String iss) {
-
-        if ((null != this.trustedIssuers) && (0 < this.trustedIssuers.size())) {
-            if (!this.trustedIssuers.contains(iss)) {
-                throw new InvalidTokenException("The issuer '" + iss + "' is not trusted "
-                        + "because it is not in the configured list of trusted issuers: " + this.trustedIssuers + ".");
-            }
-
-            return;
+        Assert.notEmpty(this.trustedIssuers, "Trusted issuers must be defined for authentication.");
+        
+        if (!this.trustedIssuers.contains(iss)) {
+            throw new InvalidTokenException("The issuer '" + iss + "' is not trusted "
+                    + "because it is not in the configured list of trusted issuers.");
         }
     }
 
