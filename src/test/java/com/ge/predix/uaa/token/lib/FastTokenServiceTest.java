@@ -48,18 +48,23 @@ public class FastTokenServiceTest {
 
     private static final String TOKEN_KEY_URL = "https://localhost:8080/uaa/token_key";
 
-    private final FastTokenServices services = new FastTokenServices();
+    private final FastTokenServices services;
 
     private final Map<String, Object> body = new HashMap<>();
 
     public FastTokenServiceTest() throws Exception {
+        this.services = new FastTokenServices();
+        this.services.setRestTemplate(mockRestTemplate());
+        this.services.setTrustedIssuers(trustedIssuers());
+    }
 
-        this.body.put(Claims.CLIENT_ID, "remote");
-        this.body.put(Claims.USER_NAME, "olds");
-        this.body.put(Claims.EMAIL, "olds@vmware.com");
-        this.body.put(Claims.ISS, TOKEN_ISSUER_ID);
-        this.body.put(Claims.USER_ID, "HDGFJSHGDF");
+    private List<String> trustedIssuers() {
+        List<String> trustedIssuers = new ArrayList<>();
+        trustedIssuers.add(TOKEN_ISSUER_ID);
+        return trustedIssuers;
+    }
 
+    private RestTemplate mockRestTemplate() {
         ParameterizedTypeReference<Map<String, Object>> typeRef =
                 new ParameterizedTypeReference<Map<String, Object>>() {
             // Nothing to add.
@@ -68,11 +73,7 @@ public class FastTokenServiceTest {
         RestTemplate restTemplate = Mockito.mock(RestTemplate.class);
         Mockito.when(restTemplate.exchange(TOKEN_KEY_URL, HttpMethod.GET, null, typeRef))
                 .thenReturn(TestTokenUtil.mockTokenKeyResponseEntity());
-        this.services.setRestTemplate(restTemplate);
-
-        List<String> trustedIssuers = new ArrayList<>();
-        trustedIssuers.add(TOKEN_ISSUER_ID);
-        this.services.setTrustedIssuers(trustedIssuers);
+        return restTemplate;
     }
 
     @Test
@@ -89,28 +90,15 @@ public class FastTokenServiceTest {
     }
 
     /**
-     * Tests that an token from the another other issuer id.
-     */
-    public void testLoadAuthenticationWithOtherIssuerId() throws Exception {
-        String accessToken = this.testTokenUtil.mockAccessToken("http://testzone1.localhost:8080/uaa/oauth/token",
-                System.currentTimeMillis() - 240000, 60);
-        OAuth2Authentication result = this.services.loadAuthentication(accessToken);
-        assertNotNull(result);
-        assertEquals("cf", result.getOAuth2Request().getClientId());
-        assertEquals("marissa", result.getUserAuthentication().getName());
-        assertEquals("1adc931e-d65f-4357-b90d-dd4131b8749a",
-                ((RemoteUserAuthentication) result.getUserAuthentication()).getId());
-        assertNotNull(result.getOAuth2Request().getRequestParameters());
-
-    }
-
-    /**
      * Tests that an token from the an untrusted issuer id throws an InvalidTokenException.
      */
-    @Test(expectedExceptions = InvalidTokenException.class)
+    @Test(
+            expectedExceptions = InvalidTokenException.class,
+            expectedExceptionsMessageRegExp = ".*is not trusted because it is not in the configured list of trusted "
+                    + "issuers.")
     public void testLoadAuthenticationWithUnstrustedIssuerId() throws Exception {
         String accessToken = this.testTokenUtil.mockAccessToken("http://testzone1localhost:8080/uaa/oauth/token",
-                System.currentTimeMillis() - 240000, 60);
+                System.currentTimeMillis(), 60);
         this.services.loadAuthentication(accessToken);
     }
 
@@ -149,6 +137,13 @@ public class FastTokenServiceTest {
     public void testLoadAuthenticationWithNullTokenString() throws Exception {
         this.services.loadAuthentication("null");
     }
+    
+    @Test(expectedExceptions=IllegalArgumentException.class)
+    public void testWithNoTrustedIssuers() {
+        FastTokenServices  tokenService = new FastTokenServices();
+        tokenService.setRestTemplate(mockRestTemplate());
+        tokenService.loadAuthentication(this.testTokenUtil.mockAccessToken(60));
+    }
 
     /**
      * Tests that a tampered token issues an InvalidTokenException.
@@ -186,6 +181,7 @@ public class FastTokenServiceTest {
         String accessToken = this.testTokenUtil.mockAccessToken(60);
 
         FastTokenServices services = new FastTokenServices();
+        services.setTrustedIssuers(trustedIssuers());
         ParameterizedTypeReference<Map<String, Object>> typeRef =
                 new ParameterizedTypeReference<Map<String, Object>>() {
             // Nothing to add.
