@@ -55,11 +55,26 @@ public final class HttpServletRequestUtil {
     /**
      * Extract zone subdomain from request. If both subdomain and header are specificied, the zone subdomain in
      * servername overrides the header value.
-     *
+     * 
      * @param headerNames
+     * @param useSubdomainsForZones
+     *            TODO
      */
     public static String getZoneName(final HttpServletRequest req, final List<String> serviceBaseDomainList,
-            final List<String> headerNames) {
+            final List<String> headerNames, final Boolean useSubdomainsForZones) {
+        String zoneName = null;
+
+        if (useSubdomainsForZones == null || useSubdomainsForZones) {
+            zoneName = getZoneFromSubdomain(req, serviceBaseDomainList);
+        }
+
+        if (StringUtils.isEmpty(zoneName)) {
+            zoneName = findHeader(req, headerNames);
+        }
+        return zoneName;
+    }
+
+    private static String getZoneFromSubdomain(final HttpServletRequest req, final List<String> serviceBaseDomainList) {
         String zoneName = null;
 
         if (serviceBaseDomainList != null) {
@@ -70,10 +85,6 @@ public final class HttpServletRequestUtil {
                     break;
                 }
             }
-        }
-
-        if (StringUtils.isEmpty(zoneName)) {
-            zoneName = findHeader(req, headerNames);
         }
         return zoneName;
     }

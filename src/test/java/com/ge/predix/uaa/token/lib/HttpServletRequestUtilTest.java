@@ -106,7 +106,7 @@ public class HttpServletRequestUtilTest {
         MockHttpServletRequest req = new MockHttpServletRequest();
         req.setServerName(requestHostname);
         req.addHeader(requestHeader, requestHeaderValue);
-        String actualZone = HttpServletRequestUtil.getZoneName(req, serviceBaseDomains, serviceConfigHeaders);
+        String actualZone = HttpServletRequestUtil.getZoneName(req, serviceBaseDomains, serviceConfigHeaders, null);
         Assert.assertEquals(actualZone, expectedZone);
     }
 
