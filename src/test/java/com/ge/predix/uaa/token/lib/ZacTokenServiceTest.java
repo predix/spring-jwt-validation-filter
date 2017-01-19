@@ -211,7 +211,6 @@ public class ZacTokenServiceTest {
 
         // Making sure we are passing the right set of issuers to the FastTokenServices
         Mockito.verify(mockFTS).setTrustedIssuers(trustedIssuers);
-
         return loadAuthentication;
     }
 
@@ -243,7 +242,6 @@ public class ZacTokenServiceTest {
         } else {
             trustedIssuers = ZONE_TRUSTED_ISSUERS;
         }
-
         return trustedIssuers;
     }
 

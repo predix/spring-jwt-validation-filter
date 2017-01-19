@@ -57,14 +57,12 @@ public final class HttpServletRequestUtil {
      * servername overrides the header value.
      * 
      * @param headerNames
-     * @param useSubdomainsForZones
-     *            TODO
      */
     public static String getZoneName(final HttpServletRequest req, final List<String> serviceBaseDomainList,
-            final List<String> headerNames, final Boolean useSubdomainsForZones) {
+            final List<String> headerNames, final boolean enableSubdomainsForZones) {
         String zoneName = null;
 
-        if (useSubdomainsForZones) {
+        if (enableSubdomainsForZones) {
             zoneName = getZoneFromSubdomain(req, serviceBaseDomainList);
         }
 

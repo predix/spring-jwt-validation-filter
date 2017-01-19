@@ -238,10 +238,6 @@ public abstract class AbstractZoneAwareTokenService implements ResourceServerTok
         return this.serviceBaseDomainList;
     }
 
-    public Boolean getEnableSubdomainsForZones() {
-        return enableSubdomainsForZones;
-    }
-
     public void setEnableSubdomainsForZones(final Boolean useSubDomainsForZones) {
         this.enableSubdomainsForZones = useSubDomainsForZones;
     }
