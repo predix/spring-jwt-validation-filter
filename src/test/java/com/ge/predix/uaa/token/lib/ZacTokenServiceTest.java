@@ -64,7 +64,7 @@ public class ZacTokenServiceTest {
     @Test(expectedExceptions = IllegalStateException.class)
     public void testLoadAuthenticationNoHeaderOrBaseDomain() throws Exception {
         // testing when zone id is not null
-        ZacTokenService zacTokenServices = configureZacTokenService("", null, "", null, Collections.EMPTY_LIST,
+        ZacTokenService zacTokenServices = configureZacTokenService("", null, "", true, Collections.EMPTY_LIST,
                 Collections.EMPTY_LIST, null);
         zacTokenServices.afterPropertiesSet();
     }

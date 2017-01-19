@@ -64,7 +64,7 @@ public final class HttpServletRequestUtil {
             final List<String> headerNames, final Boolean useSubdomainsForZones) {
         String zoneName = null;
 
-        if (useSubdomainsForZones == null || useSubdomainsForZones) {
+        if (useSubdomainsForZones) {
             zoneName = getZoneFromSubdomain(req, serviceBaseDomainList);
         }
 

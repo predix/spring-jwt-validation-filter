@@ -58,7 +58,7 @@ public abstract class AbstractZoneAwareTokenService implements ResourceServerTok
 
     private List<String> serviceBaseDomainList;
 
-    private Boolean enableSubdomainsForZones;
+    private boolean enableSubdomainsForZones = true;
 
     private String serviceId;
 
