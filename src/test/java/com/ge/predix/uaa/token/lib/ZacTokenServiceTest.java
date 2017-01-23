@@ -160,13 +160,13 @@ public class ZacTokenServiceTest {
     }
 
     private OAuth2Authentication loadAuthentication(String configuredHeaderNames, String configuredBaseDomains,
-            final String requestZoneName, final String userScopes, Boolean enableSubdomainsForZones) {
+            final String requestZoneName, final String userScopes, Boolean useSubdomainsForZones) {
         return loadAuthenticationWithZoneAsHeader(configuredHeaderNames, configuredBaseDomains, requestZoneName,
-                enableSubdomainsForZones, userScopes, "/test/resource", Arrays.asList("/zone/**"));
+                useSubdomainsForZones, userScopes, "/test/resource", Arrays.asList("/zone/**"));
     }
 
     private OAuth2Authentication loadAuthenticationWithZoneAsHeader(String configuredHeaderNames,
-            String configuredBaseDomains, final String requestZoneName, Boolean enableSubdomainsForZones,
+            String configuredBaseDomains, final String requestZoneName, Boolean useSubdomainsForZones,
             final String userScopes, final String requestUri, final List<String> nonZoneUriPatterns) {
 
         FastTokenServices mockFTS = mockFastTokenService(userScopes);
@@ -177,7 +177,7 @@ public class ZacTokenServiceTest {
 
         List<String> trustedIssuers = configureTrustedIssuers(requestZoneName);
         ZacTokenService zacTokenServices = configureZacTokenService(configuredHeaderNames, mockFTSC,
-                configuredBaseDomains, enableSubdomainsForZones, trustedIssuers, nonZoneUriPatterns, request);
+                configuredBaseDomains, useSubdomainsForZones, trustedIssuers, nonZoneUriPatterns, request);
 
         return executeZacTokenServices(zacTokenServices, mockFTS, trustedIssuers, userScopes);
     }
@@ -246,7 +246,7 @@ public class ZacTokenServiceTest {
     }
 
     private ZacTokenService configureZacTokenService(String configuredHeaderNames, FastTokenServicesCreator mockFTSC,
-            String configuredBaseDomains, Boolean enableSubdomainsForZones, List<String> trustedIssuers,
+            String configuredBaseDomains, Boolean useSubdomainsForZones, List<String> trustedIssuers,
             List<String> nonZoneUriPatterns, HttpServletRequest request) {
 
         ZacTokenService zacTokenServices = new ZacTokenService();
@@ -261,7 +261,7 @@ public class ZacTokenServiceTest {
         zacTokenServices.setFastRemoteTokenServicesCreator(mockFTSC);
         zacTokenServices.setServiceBaseDomain(configuredBaseDomains);
         zacTokenServices.setServiceId(SERVICEID);
-        zacTokenServices.setEnableSubdomainsForZones(enableSubdomainsForZones);
+        zacTokenServices.setUseSubdomainsForZones(useSubdomainsForZones);
         zacTokenServices.setOauth2RestTemplate(mockRestTemplate);
         zacTokenServices.setRequest(request);
 

@@ -58,7 +58,7 @@ public abstract class AbstractZoneAwareTokenService implements ResourceServerTok
 
     private List<String> serviceBaseDomainList;
 
-    private boolean enableSubdomainsForZones = true;
+    private boolean useSubdomainsForZones = true;
 
     private String serviceId;
 
@@ -72,7 +72,7 @@ public abstract class AbstractZoneAwareTokenService implements ResourceServerTok
 
         // Get zone id being requested from HTTP request
         String zoneId = HttpServletRequestUtil.getZoneName(this.request, this.getServiceBaseDomainList(),
-                this.getServiceZoneHeadersList(), this.enableSubdomainsForZones);
+                this.getServiceZoneHeadersList(), this.useSubdomainsForZones);
 
         URI requestUri = URI.create(this.request.getRequestURI());
 
@@ -238,8 +238,8 @@ public abstract class AbstractZoneAwareTokenService implements ResourceServerTok
         return this.serviceBaseDomainList;
     }
 
-    public void setEnableSubdomainsForZones(final Boolean useSubDomainsForZones) {
-        this.enableSubdomainsForZones = useSubDomainsForZones;
+    public void setUseSubdomainsForZones(final Boolean useSubdomainsForZones) {
+        this.useSubdomainsForZones = useSubdomainsForZones;
     }
 
 }
