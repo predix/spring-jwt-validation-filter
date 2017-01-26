@@ -106,7 +106,19 @@ public class HttpServletRequestUtilTest {
         MockHttpServletRequest req = new MockHttpServletRequest();
         req.setServerName(requestHostname);
         req.addHeader(requestHeader, requestHeaderValue);
-        String actualZone = HttpServletRequestUtil.getZoneName(req, serviceBaseDomains, serviceConfigHeaders);
+        String actualZone = HttpServletRequestUtil.getZoneName(req, serviceBaseDomains, serviceConfigHeaders, true);
+        Assert.assertEquals(actualZone, expectedZone);
+    }
+
+    @Test(dataProvider = "subdomainDataProvider")
+    public void testGetZoneNameFromSubDomain(final String requestHostname, final List<String> serviceBaseDomains,
+            final List<String> serviceConfigHeaders, String requestHeaderValue, final String expectedZone,
+            boolean useSubdomainsForZones) {
+        MockHttpServletRequest req = new MockHttpServletRequest();
+        req.setServerName(requestHostname);
+        req.addHeader(serviceConfigHeaders.get(0), requestHeaderValue);
+        String actualZone = HttpServletRequestUtil.getZoneName(req, serviceBaseDomains, serviceConfigHeaders,
+                useSubdomainsForZones);
         Assert.assertEquals(actualZone, expectedZone);
     }
 
@@ -141,6 +153,26 @@ public class HttpServletRequestUtilTest {
                         Arrays.asList("Predix-Zone-Id", "ACS-Zone-Subdomain"), "zone1" },
                 { "zone1.Guardians.com", "Predix-Zone-Id", "DONTUSE", Collections.emptyList(), Collections.emptyList(),
                         null } };
+    }
+
+    @DataProvider(name = "subdomainDataProvider")
+    private Object[][] subdomainDataProvider() {
+        return new Object[][] {
+                { "zone1.acs.com", Arrays.asList("acs.com", "guardians.com"),
+                        Collections.singletonList("Predix-Zone-Id"), "", null, false },
+                { "acs.com", Arrays.asList("acs.com", "guardians.com"), Collections.singletonList("Predix-Zone-Id"), "",
+                        null, false },
+                { "do-not-use.acs.com", Arrays.asList("acs.com", "guardians.com"),
+                        Collections.singletonList("Predix-Zone-Id"), "zone1", "zone1", false },
+                { "acs.com", Arrays.asList("acs.com", "guardians.com"), Collections.singletonList("Predix-Zone-Id"),
+                        "zone1", "zone1", false },
+                { "acs.com", Arrays.asList("acs.com", "guardians.com"), Collections.singletonList("Predix-Zone-Id"),
+                        "zone1", "zone1", true },
+                { "zone1.acs.com", Arrays.asList("acs.com", "guardians.com"),
+                        Collections.singletonList("Predix-Zone-Id"), "", "zone1", true },
+                { "acs.com", Arrays.asList("acs.com", "guardians.com"), Collections.singletonList("Predix-Zone-Id"), "",
+                        null, true } };
+
     }
 
 }
