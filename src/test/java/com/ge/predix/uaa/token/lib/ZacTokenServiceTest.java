@@ -57,7 +57,8 @@ public class ZacTokenServiceTest {
     public void testLoadAuthentication() {
         // testing when zone id is not null
         String zoneUserScope = SERVICEID + ".zones." + ZONE + ".user";
-        assertAuthentication(loadAuthentication(PREDIX_ZONE_HEADER_NAME, BASE_DOMAIN, ZONE, zoneUserScope, true), ZONE);
+        assertAuthentication(loadAuthenticationWithZoneAsHeader(PREDIX_ZONE_HEADER_NAME, BASE_DOMAIN, ZONE, true,
+                zoneUserScope, "/test/resource", Arrays.asList("/zone/**")), ZONE);
     }
 
     @SuppressWarnings("unchecked")
@@ -77,13 +78,6 @@ public class ZacTokenServiceTest {
                 "/test/resource", Arrays.asList("/zone/**"));
     }
 
-    public void testLoadAuthenticationWithSubdomains() throws Exception {
-        // testing when zone id is not null
-        String zoneUserScope = SERVICEID + ".zones." + ZONE + ".user";
-        assertAuthentication(loadAuthenticationWithZoneAsSubdomain(PREDIX_ZONE_HEADER_NAME, BASE_DOMAIN, ZONE, true,
-                zoneUserScope, "/test/resource", Arrays.asList("/zone/**")), ZONE);
-    }
-
     public void testLoadAuthenticationWhenZoneIdisNull() {
         // testing when zone is null, for a non-zone specific request
         assertAuthentication(loadAuthenticationWithZoneAsHeader(PREDIX_ZONE_HEADER_NAME, BASE_DOMAIN, null, true,
@@ -94,7 +88,8 @@ public class ZacTokenServiceTest {
     public void testLoadAuthenticationUnauthorizedScope() {
         // testing when scope is unauthorized
         String evilZoneUserScope = SERVICEID + ".zones." + ZONE + ".evilperson";
-        loadAuthentication(PREDIX_ZONE_HEADER_NAME, BASE_DOMAIN, ZONE, evilZoneUserScope, true);
+        loadAuthenticationWithZoneAsHeader(PREDIX_ZONE_HEADER_NAME, BASE_DOMAIN, ZONE, true, evilZoneUserScope,
+                "/test/resource", Arrays.asList("/zone/**"));
     }
 
     @Test(
@@ -157,12 +152,6 @@ public class ZacTokenServiceTest {
 
         };
 
-    }
-
-    private OAuth2Authentication loadAuthentication(String configuredHeaderNames, String configuredBaseDomains,
-            final String requestZoneName, final String userScopes, Boolean useSubdomainsForZones) {
-        return loadAuthenticationWithZoneAsHeader(configuredHeaderNames, configuredBaseDomains, requestZoneName,
-                useSubdomainsForZones, userScopes, "/test/resource", Arrays.asList("/zone/**"));
     }
 
     private OAuth2Authentication loadAuthenticationWithZoneAsHeader(String configuredHeaderNames,
