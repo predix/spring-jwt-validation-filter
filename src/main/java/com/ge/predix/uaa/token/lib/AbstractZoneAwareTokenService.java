@@ -58,6 +58,8 @@ public abstract class AbstractZoneAwareTokenService implements ResourceServerTok
 
     private List<String> serviceBaseDomainList;
 
+    private boolean useSubdomainsForZones = true;
+
     private String serviceId;
 
     private boolean storeClaims = false;
@@ -70,7 +72,7 @@ public abstract class AbstractZoneAwareTokenService implements ResourceServerTok
 
         // Get zone id being requested from HTTP request
         String zoneId = HttpServletRequestUtil.getZoneName(this.request, this.getServiceBaseDomainList(),
-                this.getServiceZoneHeadersList());
+                this.getServiceZoneHeadersList(), this.useSubdomainsForZones);
 
         URI requestUri = URI.create(this.request.getRequestURI());
 
@@ -92,7 +94,7 @@ public abstract class AbstractZoneAwareTokenService implements ResourceServerTok
                     if (e.getStatusCode() != HttpStatus.NOT_FOUND) {
                         throw e;
                     }
-                    throw new InvalidRequestException("Invalid zone: " + zoneId);
+                    throw new InvalidRequestException("Authentication of request for zone " + zoneId + " failed.");
                 }
             }
         }
@@ -146,7 +148,8 @@ public abstract class AbstractZoneAwareTokenService implements ResourceServerTok
         if (!authenticationAuthorities.contains(new SimpleGrantedAuthority(expectedScope))) {
             LOGGER.debug("Invalid token scope. Did not find expected scope: " + expectedScope);
             // This exception is translated to HTTP 401. InsufficientAuthenticationException results in 500
-            throw new InvalidTokenException(String.format("Unauthorized zone access by principal: %s for zone: %s",
+            throw new InvalidTokenException(String.format(
+                    "Unauthorized zone access by principal: '%s' for zone: '%s' " + ", due to insufficient scope.",
                     authentication.getPrincipal(), zoneId));
         }
     }
@@ -233,6 +236,10 @@ public abstract class AbstractZoneAwareTokenService implements ResourceServerTok
 
     public List<String> getServiceBaseDomainList() {
         return this.serviceBaseDomainList;
+    }
+
+    public void setUseSubdomainsForZones(final Boolean useSubdomainsForZones) {
+        this.useSubdomainsForZones = useSubdomainsForZones;
     }
 
 }
