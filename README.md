@@ -1,15 +1,14 @@
-# spring-jwt-validation-filter
-
-This module provides two implementations of org.springframework.security.oauth2.provider.token.ResourceServerTokenServices
-for loading spring authentication based on a access token in a incoming request.
-
 ## LICENSE
 This project is licensed under Apache v2.
 
 # FastTokenServices 
-FastTokenServices is a replacement for the original RemoteTokenServices. It is "fast" because it does not make calls 
+This module provides an implementation of `org.springframework.security.oauth2.provider.token.ResourceServerTokenServices`
+for loading spring authentication based on a JWT access token in a incoming request.
+
+FastTokenServices is a alternative for `org.springframework.security.oauth2.provider.token.RemoteTokenServices`. It is "fast" because it does not make calls 
 to UAA’s /check_token endpoint every time it verifies a token. Instead, it uses UAA’s token signing key, fetched at 
 startup, to verify the token.
+
 
 ## Usage    
 To use FastTokenServices, update spring config and specify an exact list of trusted issuers. 
