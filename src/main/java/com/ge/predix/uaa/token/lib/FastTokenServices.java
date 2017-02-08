@@ -15,8 +15,6 @@
  *******************************************************************************/
 package com.ge.predix.uaa.token.lib;
 
-import static com.ge.predix.uaa.token.lib.Claims.EXP;
-
 import java.io.UnsupportedEncodingException;
 import java.util.Collection;
 import java.util.Collections;
@@ -56,6 +54,7 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.ge.predix.uaa.token.lib.exceptions.IssuerNotTrustedException;
 
 /**
  * FastRemotetokenServices is a replacement for the original RemoteTokenServices. It is "fast" because it does not
@@ -112,13 +111,13 @@ public class FastTokenServices implements ResourceServerTokenServices {
         JwtHelper.decodeAndVerify(accessToken, verifier);
         verifyTimeWindow(claims);
 
-        Assert.state(claims.containsKey("client_id"), "Client id must be present in response from auth server");
-        String remoteClientId = (String) claims.get("client_id");
+        Assert.state(claims.containsKey(Claims.CLIENT_ID), "Client id must be present in response from auth server");
+        String remoteClientId = (String) claims.get(Claims.CLIENT_ID);
 
         Set<String> scope = new HashSet<>();
-        if (claims.containsKey("scope")) {
+        if (claims.containsKey(Claims.SCOPE)) {
             @SuppressWarnings("unchecked")
-            Collection<String> values = (Collection<String>) claims.get("scope");
+            Collection<String> values = (Collection<String>) claims.get(Claims.SCOPE);
             scope.addAll(values);
         }
 
@@ -175,7 +174,7 @@ public class FastTokenServices implements ResourceServerTokenServices {
         Assert.notEmpty(this.trustedIssuers, "Trusted issuers must be defined for authentication.");
         
         if (!this.trustedIssuers.contains(iss)) {
-            throw new InvalidTokenException("The issuer '" + iss + "' is not trusted "
+            throw new IssuerNotTrustedException("The issuer '" + iss + "' is not trusted "
                     + "because it is not in the configured list of trusted issuers.");
         }
     }
@@ -200,12 +199,12 @@ public class FastTokenServices implements ResourceServerTokenServices {
     }
 
     protected Date getIatDate(final Map<String, Object> claims) {
-        Integer iat = (Integer) claims.get("iat");
+        Integer iat = (Integer) claims.get(Claims.IAT);
         return new Date((iat.longValue() - this.maxAcceptableClockSkewSeconds) * 1000L);
     }
 
     protected Date getExpDate(final Map<String, Object> claims) {
-        Integer exp = (Integer) claims.get(EXP);
+        Integer exp = (Integer) claims.get(Claims.EXP);
         return new Date((exp.longValue() + this.maxAcceptableClockSkewSeconds) * 1000L);
     }
 
@@ -273,9 +272,9 @@ public class FastTokenServices implements ResourceServerTokenServices {
     }
 
     protected Authentication getUserAuthentication(final Map<String, Object> map, final Set<String> scope) {
-        String username = (String) map.get("user_name");
+        String username = (String) map.get(Claims.USER_NAME);
         if (null == username) {
-            String clientId = (String) map.get("client_id");
+            String clientId = (String) map.get(Claims.CLIENT_ID);
 
             if (null == clientId) {
                 return null;
@@ -296,8 +295,8 @@ public class FastTokenServices implements ResourceServerTokenServices {
             // for unauthenticated
             userAuthorities.addAll(getAuthorities(scope));
         }
-        String email = (String) map.get("email");
-        String id = (String) map.get("user_id");
+        String email = (String) map.get(Claims.EMAIL);
+        String id = (String) map.get(Claims.USER_ID);
         return new RemoteUserAuthentication(id, username, email, userAuthorities);
     }
 
@@ -323,7 +322,6 @@ public class FastTokenServices implements ResourceServerTokenServices {
     }
 
     protected String getIssuerFromClaims(final Map<String, Object> claims) {
-
         return claims.get(Claims.ISS).toString();
     }
 
