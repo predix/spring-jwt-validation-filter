@@ -9,10 +9,7 @@ public class IssuerNotTrustedException extends InvalidTokenException {
         super(msg);
    }
 
-    public IssuerNotTrustedException(final String msg, final Throwable t) {
-        super(msg, t);
-    }
-
+    @Override
     public String getOAuth2ErrorCode() {
         return "issuer_not_trusted";
     }
