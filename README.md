@@ -12,7 +12,7 @@ startup, to verify the token.
 
 ## Usage    
 To use FastTokenServices, update spring config and specify an exact list of trusted issuers. 
-The bean settings will look like follow:
+Example bean:
 
 ```xml
     <oauth:resource-server id="oauth2remoteTokenFilter"      token-services-ref="tokenServices" />
