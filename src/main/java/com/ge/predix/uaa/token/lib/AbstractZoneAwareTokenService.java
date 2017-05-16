@@ -43,6 +43,10 @@ public abstract class AbstractZoneAwareTokenService implements ResourceServerTok
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractZoneAwareTokenService.class);
 
+    // Return this message when zone doesn't exist AND when scopes are invalid for a zone so that a malicious user
+    // cannot figure out which zones do/do not exist in a service
+    private static final String UNAUTHORIZE_MESSAGE = "Unauthorized access for zone: '%s'.";
+
     private final AntPathMatcher pathMatcher = new AntPathMatcher();
 
     private DefaultZoneConfiguration defaultZoneConfig;
@@ -94,7 +98,7 @@ public abstract class AbstractZoneAwareTokenService implements ResourceServerTok
                     if (e.getStatusCode() != HttpStatus.NOT_FOUND) {
                         throw e;
                     }
-                    throw new InvalidTokenException(String.format("Unauthorized access for zone: '%s'.", zoneId));
+                    throw new InvalidTokenException(String.format(UNAUTHORIZE_MESSAGE, zoneId));
                 }
             }
         }
@@ -148,7 +152,7 @@ public abstract class AbstractZoneAwareTokenService implements ResourceServerTok
         if (!authenticationAuthorities.contains(new SimpleGrantedAuthority(expectedScope))) {
             LOGGER.debug("Invalid token scope. Did not find expected scope: " + expectedScope);
             // This exception is translated to HTTP 401. InsufficientAuthenticationException results in 500
-            throw new InvalidTokenException(String.format("Unauthorized access for zone: '%s'.", zoneId));
+            throw new InvalidTokenException(String.format(UNAUTHORIZE_MESSAGE, zoneId));
         }
     }
 
