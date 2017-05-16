@@ -3,6 +3,8 @@
 /target
 .classpath
 .project
+.idea
+*.iml
 .settings
 /test-output/
 .DS_Store
