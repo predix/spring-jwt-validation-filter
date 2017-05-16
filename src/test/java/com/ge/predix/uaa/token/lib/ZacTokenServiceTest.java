@@ -93,8 +93,8 @@ public class ZacTokenServiceTest {
     }
 
     @Test(
-            expectedExceptions = InvalidRequestException.class,
-            expectedExceptionsMessageRegExp = "Authentication of request for zone invalidtestzone failed.")
+            expectedExceptions = InvalidTokenException.class,
+            expectedExceptionsMessageRegExp = "Unauthorized access for zone: 'invalidtestzone'.")
     public void testLoadAuthenticationWhenZoneDoesNotExist() {
         // zone does not exist
         loadAuthenticationWithZoneAsHeader(PREDIX_ZONE_HEADER_NAME, BASE_DOMAIN, INVALID_ZONE, true, "some-other-scope",

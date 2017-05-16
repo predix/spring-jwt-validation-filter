@@ -12,6 +12,7 @@ package com.ge.predix.uaa.token.lib;
 
 import java.util.Map;
 
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.map.PassiveExpiringMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -81,7 +82,8 @@ public class ZacTokenService extends AbstractZoneAwareTokenService implements In
     }
 
     private void checkIfZonePropertiesSet() {
-        if (this.getServiceBaseDomainList().isEmpty() && this.getServiceZoneHeadersList().isEmpty()) {
+        if (CollectionUtils.isEmpty(this.getServiceBaseDomainList())
+                && CollectionUtils.isEmpty(this.getServiceZoneHeadersList())) {
             throw new IllegalStateException("ZacTokenService requires atleast one of the following properties to be"
                     + "configured: serviceBaseDomain or serviceZoneHeaders .");
         }
