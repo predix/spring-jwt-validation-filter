@@ -180,10 +180,16 @@ public class FastTokenServices implements ResourceServerTokenServices {
         }
     }
 
-    private void verifyTimeWindow(final Map<String, Object> claims) {
+    void verifyTimeWindow(final Map<String, Object> claims) {
 
-        Date iatDate = getIatDate(claims);
-        Date expDate = getExpDate(claims);
+        Date iatDate = null;
+        Date expDate = null;
+        try {
+            iatDate = getIatDate(claims);
+            expDate = getExpDate(claims);
+        } catch (Exception e) {
+            throw new InvalidTokenException("Unable to determine token validity window.");
+        }
 
         Date currentDate = new Date();
         if (iatDate != null && iatDate.after(currentDate)) {
@@ -199,14 +205,14 @@ public class FastTokenServices implements ResourceServerTokenServices {
         }
     }
 
-    protected Date getIatDate(final Map<String, Object> claims) {
-        Integer iat = (Integer) claims.get(Claims.IAT);
-        return new Date((iat.longValue() - this.maxAcceptableClockSkewSeconds) * 1000L);
+    private Date getIatDate(final Map<String, Object> claims) {
+        long iat = Long.valueOf(claims.get(Claims.IAT).toString());
+        return new Date((iat - this.maxAcceptableClockSkewSeconds) * 1000L);
     }
 
-    protected Date getExpDate(final Map<String, Object> claims) {
-        Integer exp = (Integer) claims.get(Claims.EXP);
-        return new Date((exp.longValue() + this.maxAcceptableClockSkewSeconds) * 1000L);
+    private Date getExpDate(final Map<String, Object> claims) {
+        long exp = Long.valueOf(claims.get(Claims.EXP).toString());
+        return new Date((exp + this.maxAcceptableClockSkewSeconds) * 1000L);
     }
 
     protected String getTokenKey(final String issuer) {

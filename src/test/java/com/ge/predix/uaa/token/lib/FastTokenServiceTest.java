@@ -51,8 +51,6 @@ public class FastTokenServiceTest {
 
     private final FastTokenServices services;
 
-    private final Map<String, Object> body = new HashMap<>();
-
     public FastTokenServiceTest() throws Exception {
         this.services = new FastTokenServices();
         this.services.setRestTemplate(mockRestTemplate());
@@ -215,6 +213,14 @@ public class FastTokenServiceTest {
         assertEquals("https://localhost:8080/uaa/token_key", this.services.getTokenKeyURL(TOKEN_ISSUER_ID));
 
         assertEquals("https://sample.com/token_key", this.services.getTokenKeyURL("https://sample.com/oauth/token"));
+    }
+
+    @Test(expectedExceptions = InvalidTokenException.class)
+    public void testVerifyTimeWindowException() {
+        Map<String, Object> claims = new HashMap<String, Object>();
+        claims.put(Claims.IAT, "not-an-expected-long");
+        claims.put(Claims.EXP, "not-an-expected-long");
+        this.services.verifyTimeWindow(claims);
     }
 
 }
