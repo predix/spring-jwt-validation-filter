@@ -25,17 +25,16 @@ import org.springframework.beans.factory.annotation.Required;
 import org.springframework.util.AntPathMatcher;
 
 public class DefaultZoneConfiguration implements InitializingBean {
-    private String trustedIssuerId;
     private List<String> allowedUriPatterns;
     private List<String> trustedIssuerIds = new ArrayList<>();
 
+    // This field is for backward compatibility.
     public String getTrustedIssuerId() {
-        return this.trustedIssuerId;
+        return this.trustedIssuerIds.isEmpty() ? null : this.trustedIssuerIds.get(0);
     }
 
     public void setTrustedIssuerId(final String trustedIssuerId) {
-        this.trustedIssuerId = trustedIssuerId;
-        // providing default behavior for existing single issuer contract
+        this.trustedIssuerIds = new ArrayList<>(); //replace list
         this.trustedIssuerIds.add(trustedIssuerId);
     }
 
@@ -66,10 +65,6 @@ public class DefaultZoneConfiguration implements InitializingBean {
 
     public void setTrustedIssuerIds(final List<String> trustedIssuerIds) {
         this.trustedIssuerIds = new ArrayList<>(trustedIssuerIds);
-        // providing default behavior for existing single issuer contract
-        if (this.trustedIssuerIds != null && this.trustedIssuerIds.size() > 0) {
-            this.trustedIssuerId = this.trustedIssuerIds.get(0);
-        }
     }
 
     @Override
