@@ -124,25 +124,29 @@ public class ZacTokenServiceTest {
     private Object[][] zoneAuthRequestProvider() {
 
         return new Object[][] {
-                // non zone specific request, with zone id should fail
+                // non zone specific request, with a token from zone trusted issuer should fail
                 { ZONE, "/zone/a", Arrays.asList("/zone/**"), SERVICEID + ".zones." + ZONE + ".user", false },
 
-                // Path Traversal Tests: non zone specific request, with zone id should fail
+                // Path Traversal Tests: non zone specific request with a token from zone trusted issuer should fail
                 { ZONE, "/blah/../global/a", Arrays.asList("/global/**"), SERVICEID + ".zones." + ZONE + ".user",
                         false },
                 { ZONE, "/blah/..\\global/a", Arrays.asList("/global/**"), SERVICEID + ".zones." + ZONE + ".user",
                         false },
+                { ZONE, "/blah/%2e%2e/global/a", Arrays.asList("/global/**"), SERVICEID + ".zones." + ZONE + ".user",
+                        false },
 
-                // non zone specific request, with no zone id should pass
+                // non zone specific request with a token from default trusted issuer should pass
                 { null, "/zone/a", Arrays.asList("/zone/**"), "scope.none", true },
+                { null, "/blah/../zone/a", Arrays.asList("/zone/**"), "scope.none", true },
+                { null, "/blah/%2e%2e/zone/a", Arrays.asList("/zone/**"), "scope.none", true },
 
-                // zone request, with zone id should pass
+                // zone request with a token from zone trusted issuer should pass
                 { ZONE, "/a", Arrays.asList("/zone/**"), SERVICEID + ".zones." + ZONE + ".user", true },
 
-                // zone request, with zone id , with incorrect scope , should fail
+                // zone request with a token from zone trusted issuer but incorrect scope should fail
                 { ZONE, "/a", Arrays.asList("/zone/**"), SERVICEID + ".zones." + ZONE + ".blah", false },
 
-                // zone request, with no zone id should fail
+                // zone request without token from zone trusted issuer should fail
                 { null, "/a", Arrays.asList("/zone/**"), SERVICEID + ".zones." + ZONE + ".blah", false },
 
                 // non-zone specific request with multiple uriPatterns, and pattern variations
@@ -150,13 +154,12 @@ public class ZacTokenServiceTest {
                         false },
                 { ZONE, "/admin/a", Arrays.asList("/zone/**", "/admin/**"), SERVICEID + ".zones." + ZONE + ".user",
                         false },
-
-        };
-
+                { null, "/blah/../zone/a", Arrays.asList("/zone/**", "/admin/**"), "scope.none", true },
+                { null, "/blah/%2e%2e/admin/a", Arrays.asList("/zone/**", "/admin/**"), "scope.none", true } };
     }
 
-    private OAuth2Authentication loadAuthenticationWithZoneAsHeader(String configuredHeaderNames,
-            String configuredBaseDomains, final String requestZoneName, Boolean useSubdomainsForZones,
+    private OAuth2Authentication loadAuthenticationWithZoneAsHeader(final String configuredHeaderNames,
+            final String configuredBaseDomains, final String requestZoneName, final Boolean useSubdomainsForZones,
             final String userScopes, final String requestUri, final List<String> nonZoneUriPatterns) {
 
         FastTokenServices mockFTS = mockFastTokenService(userScopes);
@@ -172,8 +175,8 @@ public class ZacTokenServiceTest {
         return executeZacTokenServices(zacTokenServices, mockFTS, trustedIssuers, userScopes);
     }
 
-    private OAuth2Authentication loadAuthenticationWithZoneAsSubdomain(String configuredHeaderNames,
-            String configuredBaseDomains, final String requestZoneName, Boolean useSubdomainsForZones,
+    private OAuth2Authentication loadAuthenticationWithZoneAsSubdomain(final String configuredHeaderNames,
+            final String configuredBaseDomains, final String requestZoneName, final Boolean useSubdomainsForZones,
             final String userScopes, final String requestUri, final List<String> nonZoneUriPatterns) {
 
         FastTokenServices mockFTS = mockFastTokenService(userScopes);
@@ -189,8 +192,8 @@ public class ZacTokenServiceTest {
         return executeZacTokenServices(zacTokenServices, mockFTS, trustedIssuers, userScopes);
     }
 
-    private OAuth2Authentication executeZacTokenServices(ZacTokenService zacTokenServices, FastTokenServices mockFTS,
-            List<String> trustedIssuers, String userScopes) {
+    private OAuth2Authentication executeZacTokenServices(final ZacTokenService zacTokenServices, final FastTokenServices mockFTS,
+            final List<String> trustedIssuers, final String userScopes) {
         try {
             zacTokenServices.afterPropertiesSet();
         } catch (Exception e) {
@@ -204,7 +207,7 @@ public class ZacTokenServiceTest {
         return loadAuthentication;
     }
 
-    private HttpServletRequest mockHttpRequestWithZoneAsHeader(String requestZoneName, String requestUri) {
+    private HttpServletRequest mockHttpRequestWithZoneAsHeader(final String requestZoneName, final String requestUri) {
 
         HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
         when(request.getServerName()).thenReturn("localhost");
@@ -214,7 +217,7 @@ public class ZacTokenServiceTest {
 
     }
 
-    private HttpServletRequest mockHttpRequestWithZoneAsSubdomain(String requestZoneName, String requestUri) {
+    private HttpServletRequest mockHttpRequestWithZoneAsSubdomain(final String requestZoneName, final String requestUri) {
 
         HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
         when(request.getServerName()).thenReturn(requestZoneName + ".localhost");
@@ -223,7 +226,7 @@ public class ZacTokenServiceTest {
 
     }
 
-    private List<String> configureTrustedIssuers(String requestZoneName) {
+    private List<String> configureTrustedIssuers(final String requestZoneName) {
         List<String> trustedIssuers;
         // Non zone specific request, using default issuer
         if (StringUtils.isEmpty(requestZoneName)) {
@@ -235,9 +238,9 @@ public class ZacTokenServiceTest {
         return trustedIssuers;
     }
 
-    private ZacTokenService configureZacTokenService(String configuredHeaderNames, FastTokenServicesCreator mockFTSC,
-            String configuredBaseDomains, Boolean useSubdomainsForZones, List<String> trustedIssuers,
-            List<String> nonZoneUriPatterns, HttpServletRequest request) {
+    private ZacTokenService configureZacTokenService(final String configuredHeaderNames, final FastTokenServicesCreator mockFTSC,
+            final String configuredBaseDomains, final Boolean useSubdomainsForZones, final List<String> trustedIssuers,
+            final List<String> nonZoneUriPatterns, final HttpServletRequest request) {
 
         ZacTokenService zacTokenServices = new ZacTokenService();
         RestTemplate mockRestTemplate = configureMockRestTemplate();
@@ -318,5 +321,14 @@ public class ZacTokenServiceTest {
         ZacTokenService tokenServices = new ZacTokenService();
         String accessToken = this.tokenUtil.mockAccessToken(600);
         tokenServices.readAccessToken(accessToken);
+    }
+
+    @Test
+    public void testNormalizeUri() {
+        ZoneAwareFastTokenService tokenService = new ZoneAwareFastTokenService();
+
+        Assert.assertEquals(tokenService.normalizeUri("/v1/admin"), "/v1/admin");
+        Assert.assertEquals(tokenService.normalizeUri("/v1/hello/../admin"), "/v1/admin");
+        Assert.assertEquals(tokenService.normalizeUri("/v1/hello/%2e%2e/admin"), "/v1/admin");
     }
 }

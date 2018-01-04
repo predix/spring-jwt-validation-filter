@@ -16,7 +16,10 @@
 
 package com.ge.predix.uaa.token.lib;
 
+import java.io.UnsupportedEncodingException;
 import java.net.URI;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -84,7 +87,7 @@ public abstract class AbstractZoneAwareTokenService implements ResourceServerTok
         String zoneId = HttpServletRequestUtil.getZoneName(this.request, this.getServiceBaseDomainList(),
                 this.getServiceZoneHeadersList(), this.useSubdomainsForZones);
 
-        URI requestUri = URI.create(this.request.getRequestURI());
+        String requestUri = this.request.getRequestURI();
 
         OAuth2Authentication authentication;
         if (isNonZoneSpecificRequest(requestUri)) {
@@ -132,14 +135,14 @@ public abstract class AbstractZoneAwareTokenService implements ResourceServerTok
         return authentication;
     }
 
-    private boolean isNonZoneSpecificRequest(final URI requestUri) {
+    private boolean isNonZoneSpecificRequest(final String requestUri) {
         boolean result = false;
 
-        String requestUriString = requestUri.normalize().toString();
+        String normalizedUri = normalizeUri(requestUri);
 
         if (this.defaultZoneConfig.getAllowedUriPatterns() != null) {
             for (String pattern : this.defaultZoneConfig.getAllowedUriPatterns()) {
-                if (this.pathMatcher.match(pattern, requestUriString)) {
+                if (this.pathMatcher.match(pattern, normalizedUri)) {
                     result = true;
                     break;
                 }
@@ -147,6 +150,17 @@ public abstract class AbstractZoneAwareTokenService implements ResourceServerTok
         }
 
         return result;
+    }
+
+    String normalizeUri(final String requestUri) {
+        String normalizedUri = null;
+        try {
+            normalizedUri = URI.create(URLDecoder.decode(requestUri, StandardCharsets.UTF_8.name())).normalize()
+                    .toString();
+        } catch (UnsupportedEncodingException e) {
+            throw new InvalidRequestException("Unable to normalize request URL: " + requestUri, e);
+        }
+        return normalizedUri;
     }
 
     protected abstract FastTokenServices getOrCreateZoneTokenService(final String zoneId);
