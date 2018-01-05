@@ -23,19 +23,4 @@ if [[ -z "$1" ]]; then
     exit 2
 fi
 
-XMLSTARLET_VERSION='1.6.1'
-XMLSTARLET_DIRNAME="xmlstarlet-${XMLSTARLET_VERSION}"
-XMLSTARLET_ARCHIVE_NAME="${XMLSTARLET_DIRNAME}.tar.gz"
-if [[ ! -f "${XMLSTARLET_DIRNAME}/xml" ]]; then
-    curl -OL "https://downloads.sourceforge.net/project/xmlstar/xmlstarlet/${XMLSTARLET_VERSION}/${XMLSTARLET_ARCHIVE_NAME}"
-    tar -xvzf "${XMLSTARLET_ARCHIVE_NAME}"
-    cd "$XMLSTARLET_DIRNAME"
-    ./configure && make
-else
-    cd "$XMLSTARLET_DIRNAME"
-fi
-
-./xml ed -P -L -N x='http://maven.apache.org/POM/4.0.0' -u '/x:project/x:version' -v "$1" '../pom.xml'
-./xml ed -P -L -N x='http://maven.apache.org/POM/4.0.0' -u '/x:project/x:parent/x:version' -v "$1" '../zac-service/pom.xml'
-\sed -i '' 's|^\(.*\)image:.*repo\.jenkins\.build\.ge\.com.*$|\1image: repo.jenkins.build.ge.com:9995/guardian/zac:'"$1"'|' '../docker-compose.yml'
-\sed -i '' 's/^\(.*\)VERSION:.*$/\1VERSION: '"$1"'/' '../docker-compose.yml'
+mvn versions:set -DnewVersion="$1" -DgenerateBackupPoms=false
