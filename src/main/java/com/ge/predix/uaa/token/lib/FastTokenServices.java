@@ -16,6 +16,7 @@
 
 package com.ge.predix.uaa.token.lib;
 
+import java.io.Serializable;
 import java.io.UnsupportedEncodingException;
 import java.util.Collection;
 import java.util.Collections;
@@ -67,6 +68,9 @@ public class FastTokenServices implements ResourceServerTokenServices {
 
     private static final Log LOG = LogFactory.getLog(FastTokenServices.class);
 
+    //Default Expiration Time in Millis: 24 hours
+    private static final long EXPIRATION_TIME_IN_MILLIS = 86400000L;
+
     private RestOperations restTemplate;
 
     private boolean storeClaims = false;
@@ -79,12 +83,16 @@ public class FastTokenServices implements ResourceServerTokenServices {
 
     private List<String> trustedIssuers;
 
-    private final Map<String, SignatureVerifier> tokenKeys = new HashMap<>();
+    private long timeToLiveMillis = EXPIRATION_TIME_IN_MILLIS;
 
-    // public FastTokenServices() {}//Default constructor not needed
+    private SignatureVerifierProvider signatureVerifierProvider = new NetworkOutageTolerantSignatureVerifierProvider();
+
+//    public FastTokenServices() { }
 
     public void setTokenKeyRequestTimeout(final int tokenKeyRequestTimeout) {
         this.tokenKeyRequestTimeoutSeconds = tokenKeyRequestTimeout;
+        ((NetworkOutageTolerantSignatureVerifierProvider) this.signatureVerifierProvider).
+                setTokenKeyRequestTimeoutSeconds(tokenKeyRequestTimeoutSeconds);
     }
 
     @Override
@@ -101,13 +109,7 @@ public class FastTokenServices implements ResourceServerTokenServices {
 
         verifyIssuer(iss);
 
-        // check if the singerProvider for that issuer has already in the cache
-        SignatureVerifier verifier = this.tokenKeys.get(iss);
-        if (null == verifier) {
-            String tokenKey = getTokenKey(iss);
-            verifier = getVerifier(tokenKey);
-            this.tokenKeys.put(iss, verifier);
-        }
+        SignatureVerifier verifier = this.signatureVerifierProvider.getSignatureVerifierForIssuer(iss);
 
         JwtHelper.decodeAndVerify(accessToken, verifier);
         verifyTimeWindow(claims);
@@ -215,61 +217,6 @@ public class FastTokenServices implements ResourceServerTokenServices {
         return new Date((exp + this.maxAcceptableClockSkewSeconds) * 1000L);
     }
 
-    protected String getTokenKey(final String issuer) {
-        // Check if the RestTemplate has been initialized already...
-        if (null == this.restTemplate) {
-            this.restTemplate = new RestTemplate();
-            ((RestTemplate) this.restTemplate).setErrorHandler(new FastTokenServicesResponseErrorHandler());
-            HttpComponentsClientHttpRequestFactory requestFactory = new HttpComponentsClientHttpRequestFactory();
-            requestFactory.setConnectTimeout(this.tokenKeyRequestTimeoutSeconds * 1000);
-            ((RestTemplate) this.restTemplate).setRequestFactory(requestFactory);
-        }
-
-        String tokenKeyUrl = getTokenKeyURL(issuer);
-        ParameterizedTypeReference<Map<String, Object>> typeRef = new ParameterizedTypeReference<Map<String, Object>>()
-        {
-            //
-        };
-        Map<String, Object> responseMap = null;
-        try {
-            responseMap = this.restTemplate.exchange(tokenKeyUrl, HttpMethod.GET, null, typeRef).getBody();
-        } catch (Exception e) {
-            LOG.error("Unable to retrieve the token public key. " + e.getMessage());
-            throw e;
-        }
-
-        String tokenKey = responseMap.get("value").toString();
-
-        if (LOG.isDebugEnabled()) {
-            LOG.debug("The downloaded token key from '" + tokenKeyUrl + "' is: '" + tokenKey + "'");
-        }
-
-        return tokenKey;
-
-    }
-
-    protected String getTokenKeyURL(final String issuer) {
-        if (issuer == null) {
-            return null;
-        }
-
-        String regexPattern = "^(http.*)/oauth/token$";
-        Pattern pattern = Pattern.compile(regexPattern);
-        Matcher matcher = pattern.matcher(issuer);
-        if (!matcher.matches()) {
-            throw new IllegalStateException("FastRemoteTokenService cannot process token with issuer id '" + issuer
-                    + "' because it does not match the regular expression '" + regexPattern + "'.");
-        }
-        String issuerPart = matcher.group(1);
-
-        String scheme = "https";
-        if (!this.useHttps) {
-            scheme = "http";
-        }
-        return UriComponentsBuilder.fromUriString(issuerPart).scheme(scheme).pathSegment("token_key").build()
-                .toUriString();
-    }
-
     protected Set<GrantedAuthority> getAuthorities(final Collection<String> authorities) {
         Set<GrantedAuthority> result = new HashSet<>();
         for (String authority : authorities) {
@@ -332,22 +279,6 @@ public class FastTokenServices implements ResourceServerTokenServices {
         return claims.get(Claims.ISS).toString();
     }
 
-    private static SignatureVerifier getVerifier(final String signingKey) {
-        if (isAssymetricKey(signingKey)) {
-            return new RsaVerifier(signingKey);
-        }
-
-        throw new IllegalArgumentException("Unsupported key detected. "
-                + "FastRemoteTokenService only supports RSA public keys for token verification.");
-    }
-
-    /**
-     * @return true if the key has a public verifier
-     */
-    private static boolean isAssymetricKey(final String key) {
-        return key.startsWith("-----BEGIN PUBLIC KEY-----");
-    }
-
     @Override
     public OAuth2AccessToken readAccessToken(final String accessToken) {
         throw new UnsupportedOperationException("Not supported: read access token");
@@ -355,6 +286,7 @@ public class FastTokenServices implements ResourceServerTokenServices {
 
     public void setRestTemplate(final RestOperations restTemplate) {
         this.restTemplate = restTemplate;
+        ((NetworkOutageTolerantSignatureVerifierProvider) this.signatureVerifierProvider).setRestTemplate(restTemplate);
     }
 
     public boolean isStoreClaims() {
@@ -367,6 +299,13 @@ public class FastTokenServices implements ResourceServerTokenServices {
 
     public void setUseHttps(final boolean useHttps) {
         this.useHttps = useHttps;
+        ((NetworkOutageTolerantSignatureVerifierProvider) this.signatureVerifierProvider).setUseHttps(useHttps);
+    }
+
+    public void setTimeToLiveMillis(final long timeToLiveMillis) {
+        this.timeToLiveMillis = timeToLiveMillis;
+        ((NetworkOutageTolerantSignatureVerifierProvider)
+                this.signatureVerifierProvider).setTimeToLiveMillis(timeToLiveMillis);
     }
 
     public void setMaxAcceptableClockSkewSeconds(final int maxAcceptableClockSkewSeconds) {
@@ -375,5 +314,157 @@ public class FastTokenServices implements ResourceServerTokenServices {
 
     public void setTrustedIssuers(final List<String> trustedIssuers) {
         this.trustedIssuers = trustedIssuers;
+    }
+
+    protected interface SignatureVerifierProvider extends Serializable {
+        SignatureVerifier getSignatureVerifierForIssuer(final String issuer);
+    }
+
+    protected static class NetworkOutageTolerantSignatureVerifierProvider implements SignatureVerifierProvider {
+        private static final long serialVersionUID = 1L;
+
+        private RestOperations restTemplate;
+
+        private boolean useHttps = true;
+
+        private int tokenKeyRequestTimeoutSeconds = 2;
+
+        private long timeToLiveMillis = EXPIRATION_TIME_IN_MILLIS;
+
+        private final Map<String, SignatureVerifier> tokenKeys = new HashMap<>();
+
+        private final Map<Object, Long> expirationMap = new HashMap<>();
+
+        public void setUseHttps(final boolean useHttps) {
+            this.useHttps = useHttps;
+        }
+
+        public void setTokenKeyRequestTimeoutSeconds(final int tokenKeyRequestTimeoutSeconds) {
+            this.tokenKeyRequestTimeoutSeconds = tokenKeyRequestTimeoutSeconds;
+        }
+
+        public void setTimeToLiveMillis(final long timeToLiveMillis) {
+            this.timeToLiveMillis = timeToLiveMillis;
+        }
+
+        private boolean isExpired(final long now, final Long expirationTimeObject) {
+            if (expirationTimeObject == null) {
+                return false;
+            } else {
+                long expirationTime = expirationTimeObject.longValue();
+                return expirationTime >= 0L && now >= expirationTime;
+            }
+        }
+
+        private void recycleIfExpired(final String key, final long now) {
+            Long expirationTimeObject = this.expirationMap.get(key);
+            if (this.isExpired(now, expirationTimeObject)) {
+                try {
+                    String tokenKey = getTokenKey(key);
+                    this.tokenKeys.remove(key);
+                    storeTokenKeyWithExpiration(key, tokenKey);
+                } catch (Exception e) {
+                    //Dont remove if can not obtain the key...
+                }
+            }
+        }
+
+        public void setRestTemplate(final RestOperations restTemplate) {
+            this.restTemplate = restTemplate;
+        }
+
+        public long expirationTime() {
+            long now = System.currentTimeMillis();
+            return now > 9223372036854775807L - this.timeToLiveMillis ? -1L : now + this.timeToLiveMillis;
+        }
+
+        @Override
+        public SignatureVerifier getSignatureVerifierForIssuer(final String issuer) {
+            this.recycleIfExpired(issuer, System.currentTimeMillis());
+            // check if the singerProvider for that issuer was already in the cache
+            SignatureVerifier verifier = this.tokenKeys.get(issuer);
+            if (null == verifier) {
+                String tokenKey = getTokenKey(issuer);
+                verifier = getVerifier(tokenKey);
+                storeTokenKeyWithExpiration(issuer, tokenKey);
+            }
+            return verifier;
+        }
+
+        private void storeTokenKeyWithExpiration(final String issuer, final String tokenKey) {
+            this.expirationMap.put(issuer, expirationTime());
+            this.tokenKeys.put(issuer, getVerifier(tokenKey));
+        }
+
+        protected String getTokenKey(final String issuer) {
+            // Check if the RestTemplate has been initialized already...
+            if (null == this.restTemplate) {
+                this.restTemplate = new RestTemplate();
+                ((RestTemplate) this.restTemplate).setErrorHandler(new FastTokenServicesResponseErrorHandler());
+                HttpComponentsClientHttpRequestFactory requestFactory = new HttpComponentsClientHttpRequestFactory();
+                requestFactory.setConnectTimeout(this.tokenKeyRequestTimeoutSeconds * 1000);
+                ((RestTemplate) this.restTemplate).setRequestFactory(requestFactory);
+            }
+
+            String tokenKeyUrl = getTokenKeyURL(issuer);
+            ParameterizedTypeReference<Map<String, Object>> typeRef =
+                    new ParameterizedTypeReference<Map<String, Object>>()
+                    {
+                        //
+                    };
+            Map<String, Object> responseMap = null;
+            try {
+                responseMap =
+                        this.restTemplate.exchange(tokenKeyUrl, HttpMethod.GET, null, typeRef).getBody();
+            } catch (Exception e) {
+                LOG.error("Unable to retrieve the token public key. " + e.getMessage());
+                throw e;
+            }
+
+            String tokenKey = responseMap.get("value").toString();
+
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("The downloaded token key from '" + tokenKeyUrl + "' is: '" + tokenKey + "'");
+            }
+            return tokenKey;
+        }
+
+        protected String getTokenKeyURL(final String issuer) {
+            if (issuer == null) {
+                return null;
+            }
+
+            String regexPattern = "^(http.*)/oauth/token$";
+            Pattern pattern = Pattern.compile(regexPattern);
+            Matcher matcher = pattern.matcher(issuer);
+            if (!matcher.matches()) {
+                throw new IllegalStateException("FastRemoteTokenService cannot process token with issuer id '" + issuer
+                        + "' because it does not match the regular expression '" + regexPattern + "'.");
+            }
+            String issuerPart = matcher.group(1);
+
+            String scheme = "https";
+            if (!this.useHttps) {
+                scheme = "http";
+            }
+            return UriComponentsBuilder.fromUriString(issuerPart).scheme(scheme).pathSegment("token_key").build()
+                    .toUriString();
+        }
+
+        private SignatureVerifier getVerifier(final String signingKey) {
+            if (isAssymetricKey(signingKey)) {
+                return new RsaVerifier(signingKey);
+            }
+
+            throw new IllegalArgumentException("Unsupported key detected. "
+                    + "FastRemoteTokenService only supports RSA public keys for token verification.");
+        }
+
+        /**
+         * @return true if the key has a public verifier
+         */
+        private static boolean isAssymetricKey(final String key) {
+            return key.startsWith("-----BEGIN PUBLIC KEY-----");
+        }
     }
 }
