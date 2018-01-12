@@ -21,6 +21,7 @@ import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertNotNull;
 import static org.testng.Assert.assertNull;
 
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -34,6 +35,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.security.jwt.crypto.sign.InvalidSignatureException;
 import org.springframework.security.oauth2.common.exceptions.InvalidTokenException;
 import org.springframework.security.oauth2.provider.OAuth2Authentication;
+import org.springframework.util.ReflectionUtils;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import org.testng.annotations.Test;
@@ -53,7 +55,7 @@ public class FastTokenServiceTest {
 
     public FastTokenServiceTest() throws Exception {
         this.services = new FastTokenServices();
-        this.services.setRestTemplate(mockRestTemplate());
+        this.services.setRestTemplate(mockRestTemplate(false));
         this.services.setTrustedIssuers(trustedIssuers());
     }
 
@@ -63,15 +65,20 @@ public class FastTokenServiceTest {
         return trustedIssuers;
     }
 
-    private RestTemplate mockRestTemplate() {
+    private RestTemplate mockRestTemplate(final boolean updatedSigningKey) {
         ParameterizedTypeReference<Map<String, Object>> typeRef =
                 new ParameterizedTypeReference<Map<String, Object>>() {
             // Nothing to add.
         };
 
         RestTemplate restTemplate = Mockito.mock(RestTemplate.class);
-        Mockito.when(restTemplate.exchange(TOKEN_KEY_URL, HttpMethod.GET, null, typeRef))
-                .thenReturn(TestTokenUtil.mockTokenKeyResponseEntity());
+        if(updatedSigningKey) {
+            Mockito.when(restTemplate.exchange(TOKEN_KEY_URL, HttpMethod.GET, null, typeRef))
+                    .thenReturn(TestTokenUtil.mockUpdatedTokenKeyResponseEntity());
+        } else {
+            Mockito.when(restTemplate.exchange(TOKEN_KEY_URL, HttpMethod.GET, null, typeRef))
+                    .thenReturn(TestTokenUtil.mockTokenKeyResponseEntity());
+        }
         return restTemplate;
     }
 
@@ -88,6 +95,41 @@ public class FastTokenServiceTest {
         assertNull(result.getOAuth2Request().getRequestParameters().get(Claims.ISS));
     }
 
+    @Test
+    public void testLoadAuthenticationForUpdatedIssuerTokenSigningKeyPositive() throws Exception {
+        FastTokenServices fastTokenServices  = new FastTokenServices(false,
+                trustedIssuers(),
+                3000L);
+        fastTokenServices.setRestTemplate(mockRestTemplate(false));
+        String accessToken = this.testTokenUtil.mockAccessToken(60, false);
+        OAuth2Authentication result = fastTokenServices.loadAuthentication(accessToken);
+        assertNotNull(result);
+
+        fastTokenServices.setRestTemplate(mockRestTemplate(true));
+        //Ensure the TokenKey for issuer times out
+        Thread.sleep(3100L);
+        accessToken = this.testTokenUtil.mockAccessToken(60, true);
+        result = fastTokenServices.loadAuthentication(accessToken);
+        assertNotNull(result);
+    }
+
+    @Test(expectedExceptions = InvalidSignatureException.class)
+    public void testLoadAuthenticationForUpdatedIssuerTokenSigningKeyNegative() throws Exception {
+        FastTokenServices fastTokenServices  = new FastTokenServices(false,
+                trustedIssuers(),
+                3000L);
+        fastTokenServices.setRestTemplate(mockRestTemplate(false));
+        String accessToken = this.testTokenUtil.mockAccessToken(60, false);
+        OAuth2Authentication result = fastTokenServices.loadAuthentication(accessToken);
+        assertNotNull(result);
+
+        fastTokenServices.setRestTemplate(mockRestTemplate(true));
+        //Ensure the TokenKey for issuer times out
+        Thread.sleep(3100);
+        //Try to reuse the token signed by the older token signing key
+        fastTokenServices.loadAuthentication(accessToken);
+    }
+
     /**
      * Tests that an token from the an untrusted issuer id throws an InvalidTokenException.
      */
@@ -97,7 +139,7 @@ public class FastTokenServiceTest {
                     + "issuers.")
     public void testLoadAuthenticationWithUnstrustedIssuerId() throws Exception {
         String accessToken = this.testTokenUtil.mockAccessToken("http://testzone1localhost:8080/uaa/oauth/token",
-                System.currentTimeMillis(), 60);
+                System.currentTimeMillis(), 60, false);
         this.services.loadAuthentication(accessToken);
     }
 
@@ -140,7 +182,7 @@ public class FastTokenServiceTest {
     @Test(expectedExceptions=IllegalArgumentException.class)
     public void testWithNoTrustedIssuers() {
         FastTokenServices  tokenService = new FastTokenServices();
-        tokenService.setRestTemplate(mockRestTemplate());
+        tokenService.setRestTemplate(mockRestTemplate(false));
         tokenService.loadAuthentication(this.testTokenUtil.mockAccessToken(60));
     }
 
@@ -170,6 +212,8 @@ public class FastTokenServiceTest {
         // We've tampered the token so this should fail.
         this.services.loadAuthentication(accessToken);
     }
+
+
 
     /**
      * Tests that connection error while retrieving token key issues RestClientException.
@@ -212,7 +256,8 @@ public class FastTokenServiceTest {
     public void testGetTokenKeyURL() {
         assertEquals("https://localhost:8080/uaa/token_key", this.services.getTokenKeyURL(TOKEN_ISSUER_ID));
 
-        assertEquals("https://sample.com/token_key", this.services.getTokenKeyURL("https://sample.com/oauth/token"));
+        assertEquals("https://sample.com/token_key",
+                this.services.getTokenKeyURL("https://sample.com/oauth/token"));
     }
 
     @Test(expectedExceptions = InvalidTokenException.class)
@@ -222,5 +267,4 @@ public class FastTokenServiceTest {
         claims.put(Claims.EXP, "not-an-expected-long");
         this.services.verifyTimeWindow(claims);
     }
-
 }
