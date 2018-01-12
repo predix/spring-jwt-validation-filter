@@ -31,6 +31,7 @@ import java.util.regex.Pattern;
 import org.apache.commons.collections4.map.PassiveExpiringMap;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.springframework.beans.factory.InitializingBean;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
@@ -64,12 +65,9 @@ import com.ge.predix.uaa.token.lib.exceptions.IssuerNotTrustedException;
  * fetched at startup, to verify the token.
  *
  */
-public class FastTokenServices implements ResourceServerTokenServices {
+public class FastTokenServices implements ResourceServerTokenServices, InitializingBean {
 
     private static final Log LOG = LogFactory.getLog(FastTokenServices.class);
-
-    //Default Expiration Time in Millis: 24 hours
-    private static final long EXPIRATION_TIME_IN_MILLIS = 86400000L;
 
     private RestOperations restTemplate;
 
@@ -81,23 +79,18 @@ public class FastTokenServices implements ResourceServerTokenServices {
 
     private int tokenKeyRequestTimeoutSeconds = 2;
 
-    private long timeToLiveMillis = EXPIRATION_TIME_IN_MILLIS;
+    //Default Expiration Time in Millis: 24 hours
+    private long issuerPublicKeyTTL = 86400000L;
 
     private List<String> trustedIssuers;
 
-    private final Map<String, SignatureVerifier> tokenKeys;
+    private Map<String, SignatureVerifier> tokenKeys;
 
-     public FastTokenServices() {
-         this.tokenKeys = new PassiveExpiringMap<>(EXPIRATION_TIME_IN_MILLIS);
-     }
+//     public FastTokenServices() {} Default Constructor not needed
 
-    public FastTokenServices(final boolean storeClaims,
-                                  final List<String> trustedIssuers,
-                                  final long timeToLiveMillis) {
-         this.storeClaims = storeClaims;
-         this.trustedIssuers = trustedIssuers;
-         this.timeToLiveMillis = timeToLiveMillis;
-         this.tokenKeys = new PassiveExpiringMap<>(this.timeToLiveMillis);
+    @Override
+    public void afterPropertiesSet() throws Exception {
+        this.tokenKeys = new PassiveExpiringMap<>(this.issuerPublicKeyTTL);
     }
 
     public void setTokenKeyRequestTimeout(final int tokenKeyRequestTimeout) {
@@ -394,7 +387,7 @@ public class FastTokenServices implements ResourceServerTokenServices {
         this.trustedIssuers = trustedIssuers;
     }
 
-    public void setTimeToLiveMillis(final long timeToLiveMillis) {
-        this.timeToLiveMillis = timeToLiveMillis;
+    public void setIssuerPublicKeyTTL(final long issuerPublicKeyTTL) {
+        this.issuerPublicKeyTTL = issuerPublicKeyTTL;
     }
 }

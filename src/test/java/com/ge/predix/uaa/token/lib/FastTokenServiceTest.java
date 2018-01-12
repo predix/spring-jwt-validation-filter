@@ -21,7 +21,6 @@ import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertNotNull;
 import static org.testng.Assert.assertNull;
 
-import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -35,7 +34,6 @@ import org.springframework.http.HttpMethod;
 import org.springframework.security.jwt.crypto.sign.InvalidSignatureException;
 import org.springframework.security.oauth2.common.exceptions.InvalidTokenException;
 import org.springframework.security.oauth2.provider.OAuth2Authentication;
-import org.springframework.util.ReflectionUtils;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import org.testng.annotations.Test;
@@ -57,6 +55,7 @@ public class FastTokenServiceTest {
         this.services = new FastTokenServices();
         this.services.setRestTemplate(mockRestTemplate(false));
         this.services.setTrustedIssuers(trustedIssuers());
+        this.services.afterPropertiesSet();
     }
 
     private List<String> trustedIssuers() {
@@ -97,10 +96,11 @@ public class FastTokenServiceTest {
 
     @Test
     public void testLoadAuthenticationForUpdatedIssuerTokenSigningKeyPositive() throws Exception {
-        FastTokenServices fastTokenServices  = new FastTokenServices(false,
-                trustedIssuers(),
-                3000L);
+        FastTokenServices fastTokenServices  = new FastTokenServices();
+        fastTokenServices.setTrustedIssuers(trustedIssuers());
+        fastTokenServices.setIssuerPublicKeyTTL(3000L);
         fastTokenServices.setRestTemplate(mockRestTemplate(false));
+        fastTokenServices.afterPropertiesSet();
         String accessToken = this.testTokenUtil.mockAccessToken(60, false);
         OAuth2Authentication result = fastTokenServices.loadAuthentication(accessToken);
         assertNotNull(result);
@@ -115,10 +115,11 @@ public class FastTokenServiceTest {
 
     @Test(expectedExceptions = InvalidSignatureException.class)
     public void testLoadAuthenticationForUpdatedIssuerTokenSigningKeyNegative() throws Exception {
-        FastTokenServices fastTokenServices  = new FastTokenServices(false,
-                trustedIssuers(),
-                3000L);
+        FastTokenServices fastTokenServices  = new FastTokenServices();
+        fastTokenServices.setTrustedIssuers(trustedIssuers());
+        fastTokenServices.setIssuerPublicKeyTTL(3000L);
         fastTokenServices.setRestTemplate(mockRestTemplate(false));
+        fastTokenServices.afterPropertiesSet();
         String accessToken = this.testTokenUtil.mockAccessToken(60, false);
         OAuth2Authentication result = fastTokenServices.loadAuthentication(accessToken);
         assertNotNull(result);
@@ -225,6 +226,7 @@ public class FastTokenServiceTest {
 
         FastTokenServices services = new FastTokenServices();
         services.setTrustedIssuers(trustedIssuers());
+        services.afterPropertiesSet();
         ParameterizedTypeReference<Map<String, Object>> typeRef =
                 new ParameterizedTypeReference<Map<String, Object>>() {
             // Nothing to add.
