@@ -96,29 +96,73 @@ public class TestTokenUtil {
             + "QH+xY/4h8tgL+eASz5QWhj8DItm8wYGI5lKJr8f36jk0JLPUXODyDAeN6ekXY9LI\n"
             + "fudkijw0dnh28LJqbkFF5wLNtATzyCfzjp+czrPMn9uqLNKt/iVD\n" + "-----END RSA PRIVATE KEY-----\n";
 
+    private static final String UPDATED_TOKEN_VERIFYING_KEY =  "-----BEGIN PUBLIC KEY-----\n"
+            + "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA1qEFBIQNuVVrF9UOy9AP\n"
+            + "7tfdCL19TmjKw16gXHfmSEJMcEzkmM4/wZwStgtX8KFyhnzu3ZjQ9Mbd58Ddht+K\n"
+            + "1Zz32UN1V/vXT7TwocWWPUUNXbEn3Tm6h7MCxbDyoGeXMQdFNq/w3bdHm/L0SOJC\n"
+            + "UjLnOMb0n1PTtq9hNNIT2RTLze/DKabdKaq+oqTKGl1tqDZ8OKQs6PrgChcehuWB\n"
+            + "j+ZXaIaQmLeRWboyS1/H7u7iN3vPpGMqt+/PK1jC87NPtTlq8EHMW8MyOmTUsuWE\n"
+            + "wWMr1bNcmI/snxpbwO9CeE3PwbT1CzA+Ky0zGa++bBcaT3tPMoOef3XS1YCRXzME\n"
+            + "KQIDAQAB\n"
+            + "-----END PUBLIC KEY-----";
+
+    private static final String UPDATED_TOKEN_SIGNING_KEY = "-----BEGIN RSA PRIVATE KEY-----\n"
+            + "MIIEpAIBAAKCAQEA1qEFBIQNuVVrF9UOy9AP7tfdCL19TmjKw16gXHfmSEJMcEzk\n"
+            + "mM4/wZwStgtX8KFyhnzu3ZjQ9Mbd58Ddht+K1Zz32UN1V/vXT7TwocWWPUUNXbEn\n"
+            + "3Tm6h7MCxbDyoGeXMQdFNq/w3bdHm/L0SOJCUjLnOMb0n1PTtq9hNNIT2RTLze/D\n"
+            + "KabdKaq+oqTKGl1tqDZ8OKQs6PrgChcehuWBj+ZXaIaQmLeRWboyS1/H7u7iN3vP\n"
+            + "pGMqt+/PK1jC87NPtTlq8EHMW8MyOmTUsuWEwWMr1bNcmI/snxpbwO9CeE3PwbT1\n"
+            + "CzA+Ky0zGa++bBcaT3tPMoOef3XS1YCRXzMEKQIDAQABAoIBAQCJCutfRMpWinoF\n"
+            + "D5+Q99sUkHSr/gIirLq7IJKYOF6ryNlx40cbYqZHA1bXMksGdK/hu6fxin/xq4FJ\n"
+            + "V1abpeTKHJ4M9gvZEA8c79WuFbGmkY7FQjbIBPJbbyvX+vIRBdP+FDxXfOP5TevF\n"
+            + "Yc4lM4NRZPtKv462pRnLzhPtXC4cLwXF1SwkTqU5xbU4T+TWf+CdJPaGW/dI3Lon\n"
+            + "cW6Sor9X80OkATWvZYS/38Hp7eV1962wkfCBz1MPwWBjS/bXJOAWn42kAGRdcL20\n"
+            + "K4P8hTVWNp4ZolO6dNGELtnDM5+0g+LDVNIMWPwqQlSWAvhqx39dCL8RV8jP2FGp\n"
+            + "PPyiWZ/ZAoGBAO7bC+T1D/gDIgAIOM9WQhdF4wMfRFmc7JFOdC2BVJeQ+2RvL8s2\n"
+            + "0KkSeUGN0pYSQI7SNyvrBv8aR2zIkwX5aY/Ck1AVZR+QzZE1QQ9d8kgle5UtQu/9\n"
+            + "/xok+qVGvNcFLo9Nr0sheu04CGYxkkqmvWgxUdZw3LAjX7ZXRSeUWzULAoGBAOYI\n"
+            + "z1+7Xn45a3i2/ynk58VaNFLqsYj/wZkWCKEZn7st2UvIVMpxs+KUk/I8LR1IdIDv\n"
+            + "GfsGVWYeXu9IrBq0sfmg2HbE/0x6LM2pSBWYbtbKQJxlEZqwgzd2HuSzvlZncJjC\n"
+            + "rGYDCpTGXyIiz4jzqWI3wfXJ8UKEQqODROJZ6MQbAoGAUtHY+faPJuvPKjuvlxTN\n"
+            + "rcwpvrdkt73VuTx+xBiIAFXhFR4IcGn9R+KD8NsAHdEOWXdCchP4RRQTmACkGfo1\n"
+            + "RAevlKEWgy9uV98jQ/TLQYDdrQgYoaZsgeA4mH5ClDvTvRSup1pgiUhYgTbHBuNx\n"
+            + "4WLYgYZ4vwpE8bCo5eRnC6kCgYEAgWKnMZN0HM8zMdzMPMYxzwFjuNelMAea3v5T\n"
+            + "sDl3bJLnTAbMGmpF4cXsSS2runLMhND37ger9RpUD4bytrq3+E6OMo+vgVae6La0\n"
+            + "guEQRuPP36fBdR6fT4yy57Rp9LON03579Yz0YKYLUGoADWnv9fyirhr+BonZ6Zqm\n"
+            + "HiKwF80CgYAjRguz6TpKViQKOUHUc5oKXRouysw4/0Tbxv15lLIWMVjbVX2xz13g\n"
+            + "mHRwYixWdiLolgw/kwuzZ4wcZpIyn4TRK66UyTSG7LnY2Eh9xs6ZHLLHxDUNgHk6\n"
+            + "Ob9JCpapUTY7oTo7oOIU9flKRMmg+UOR4ZwZZ1KLjqDhX/4rcmYOtQ==\n"
+            + "-----END RSA PRIVATE KEY-----";
+
     private final RsaSigner signer;
 
-    public TestTokenUtil() {
+    private final RsaSigner updatedSigner;
 
+    public TestTokenUtil() {
         this.signer = new RsaSigner(TOKEN_SIGNING_KEY);
+        this.updatedSigner = new RsaSigner(UPDATED_TOKEN_SIGNING_KEY);
     }
 
     public String mockAccessToken(final int validitySeconds) {
-        return mockAccessToken(TOKEN_ISSUER_ID, System.currentTimeMillis(), validitySeconds);
+        return mockAccessToken(TOKEN_ISSUER_ID, System.currentTimeMillis(), validitySeconds, false);
+    }
+
+    public String mockAccessToken(final int validitySeconds, final boolean issuerSigningKeyUpdated) {
+        return mockAccessToken(TOKEN_ISSUER_ID, System.currentTimeMillis(), validitySeconds, issuerSigningKeyUpdated);
     }
 
     public String mockAccessToken(final long issuedAtMillis, final int validitySeconds) {
-        return mockAccessToken(TOKEN_ISSUER_ID, issuedAtMillis, validitySeconds);
+        return mockAccessToken(TOKEN_ISSUER_ID, issuedAtMillis, validitySeconds, false);
     }
 
-    public String mockAccessToken(final String issuerId, final long issuedAtMillis, final int validitySeconds) {
+    public String mockAccessToken(final String issuerId, final long issuedAtMillis, final int validitySeconds, final boolean issuerSigningKeyUpdated) {
         Collection<GrantedAuthority> clientScopes = Arrays
                 .asList(new GrantedAuthority[] { new SimpleGrantedAuthority("uaa.resource") });
         Set<String> requestedScopes = new HashSet<>(Arrays.asList(new String[] { "openid" }));
         Set<String> resourceIds = new HashSet<>(Arrays.asList(new String[] { "none" }));
         DefaultOAuth2AccessToken openIdToken = createAccessToken(issuerId, "1adc931e-d65f-4357-b90d-dd4131b8749a",
                 "marissa", "marissa@test.com", validitySeconds, clientScopes, requestedScopes, "cf", resourceIds,
-                "passsword", null, null, null, null, issuedAtMillis, "uaa");
+                "passsword", null, null, null, null, issuedAtMillis, "uaa", issuerSigningKeyUpdated);
         return openIdToken.getValue();
     }
 
@@ -130,7 +174,7 @@ public class TestTokenUtil {
         DefaultOAuth2AccessToken openIdToken = createAccessToken(TOKEN_ISSUER_ID,
                 "1adc931e-d65f-4357-b90d-dd4131b8749a", "marissa", "marissa@test.com", validitySeconds, clientScopes,
                 requestedScopes, "cf", resourceIds, "passsword", null, null, null, null, System.currentTimeMillis(),
-                "uaa");
+                "uaa", false);
         return openIdToken.getValue();
     }
 
@@ -139,7 +183,7 @@ public class TestTokenUtil {
             final Collection<GrantedAuthority> clientScopes, final Set<String> requestedScopes, final String clientId,
             final Set<String> resourceIds, final String grantType, final String refreshToken,
             final Map<String, String> additionalAuthorizationAttributes, final Set<String> responseTypes,
-            final String revocableHashSignature, final long issuedAtMillis, final String zoneId) {
+            final String revocableHashSignature, final long issuedAtMillis, final String zoneId, final boolean issuerSigningKeyUpdated) {
 
         String tokenId = UUID.randomUUID().toString();
         DefaultOAuth2AccessToken accessToken = new DefaultOAuth2AccessToken(tokenId);
@@ -170,7 +214,7 @@ public class TestTokenUtil {
         } catch (JsonUtils.JsonUtilException e) {
             throw new IllegalStateException("Cannot convert access token to JSON", e);
         }
-        String token = JwtHelper.encode(content, this.signer).getEncoded();
+        String token = issuerSigningKeyUpdated ? JwtHelper.encode(content, this.updatedSigner).getEncoded() :JwtHelper.encode(content, this.signer).getEncoded();
 
         // This setter copies the value and returns. Don't change.
         accessToken.setValue(token);
@@ -244,4 +288,21 @@ public class TestTokenUtil {
         responseEntityBody.put("e", "AQAB");
         return new ResponseEntity<Map<String, Object>>(responseEntityBody, HttpStatus.OK);
     }
+
+    public static ResponseEntity<Map<String, Object>> mockUpdatedTokenKeyResponseEntity() {
+        Map<String, Object> responseEntityBody = new HashMap<>();
+        responseEntityBody.put("alg", "SHA256withRSA");
+        responseEntityBody.put("value", UPDATED_TOKEN_VERIFYING_KEY);
+        responseEntityBody.put("kty", "RSA");
+        responseEntityBody.put("use", "sig");
+        responseEntityBody.put("n",
+                "ANJufZdrvYg5zG61x36pDq59nVUN73wSanA7hVCtNdsfasf3ftT2Rm1ZTQqp5KSCfLMhaaVvJY51sHj+/i4lqUaM9CO32G93fE44VfOmPfexZ"
+                        + "eAwa8YDOikyTrhP7sZ6A4WUNeC4DlNnJF4zsznU7JxjCkASwpdL6XFwbRSzGkm6b9aM4vIewyclWehJxUGVFhnYEzIQ65qnr38feV"
+                        + "P9enOVgQzpKsCJ+xpa8vZ/UrscoG3/IOQM6VnLrGYAyyCGeyU1JXQW/KlNmtA5eJry2Tp+MD6I34/QsNkCArHOfj8H9tXz/oc3/tV"
+                        + "kkR252L/Lmp0TtIGfHpBmoITP9h+oKiW6NpyCc=");
+        responseEntityBody.put("e", "AQAB");
+        return new ResponseEntity<Map<String, Object>>(responseEntityBody, HttpStatus.OK);
+    }
+
+
 }
