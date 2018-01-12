@@ -28,6 +28,7 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.apache.commons.collections4.map.PassiveExpiringMap;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.springframework.core.ParameterizedTypeReference;
@@ -67,6 +68,9 @@ public class FastTokenServices implements ResourceServerTokenServices {
 
     private static final Log LOG = LogFactory.getLog(FastTokenServices.class);
 
+    //Default Expiration Time in Millis: 24 hours
+    private static final long EXPIRATION_TIME_IN_MILLIS = 86400000L;
+
     private RestOperations restTemplate;
 
     private boolean storeClaims = false;
@@ -77,11 +81,24 @@ public class FastTokenServices implements ResourceServerTokenServices {
 
     private int tokenKeyRequestTimeoutSeconds = 2;
 
+    private long timeToLiveMillis = EXPIRATION_TIME_IN_MILLIS;
+
     private List<String> trustedIssuers;
 
-    private final Map<String, SignatureVerifier> tokenKeys = new HashMap<>();
+    private final Map<String, SignatureVerifier> tokenKeys;
 
-    // public FastTokenServices() {}//Default constructor not needed
+     public FastTokenServices() {
+         this.tokenKeys = new PassiveExpiringMap<>(EXPIRATION_TIME_IN_MILLIS);
+     }
+
+    public FastTokenServices(final boolean storeClaims,
+                                  final List<String> trustedIssuers,
+                                  final long timeToLiveMillis) {
+         this.storeClaims = storeClaims;
+         this.trustedIssuers = trustedIssuers;
+         this.timeToLiveMillis = timeToLiveMillis;
+         this.tokenKeys = new PassiveExpiringMap<>(this.timeToLiveMillis);
+    }
 
     public void setTokenKeyRequestTimeout(final int tokenKeyRequestTimeout) {
         this.tokenKeyRequestTimeoutSeconds = tokenKeyRequestTimeout;
@@ -375,5 +392,9 @@ public class FastTokenServices implements ResourceServerTokenServices {
 
     public void setTrustedIssuers(final List<String> trustedIssuers) {
         this.trustedIssuers = trustedIssuers;
+    }
+
+    public void setTimeToLiveMillis(final long timeToLiveMillis) {
+        this.timeToLiveMillis = timeToLiveMillis;
     }
 }
