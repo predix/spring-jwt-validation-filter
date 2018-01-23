@@ -41,6 +41,7 @@ import org.springframework.web.client.RestTemplate;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
+import org.testng.collections.Lists;
 
 @Test
 public class ZacTokenServiceTest {
@@ -130,7 +131,7 @@ public class ZacTokenServiceTest {
                 // Path Traversal Tests: non zone specific request with a token from zone trusted issuer should fail
                 { ZONE, "/blah/../global/a", Arrays.asList("/global/**"), SERVICEID + ".zones." + ZONE + ".user",
                         false },
-                { ZONE, "/blah/..\\global/a", Arrays.asList("/global/**"), SERVICEID + ".zones." + ZONE + ".user",
+                { ZONE, "/blah\\/../global/a", Arrays.asList("/global/**"), SERVICEID + ".zones." + ZONE + ".user",
                         false },
                 { ZONE, "/blah/%2e%2e/global/a", Arrays.asList("/global/**"), SERVICEID + ".zones." + ZONE + ".user",
                         false },
@@ -155,7 +156,14 @@ public class ZacTokenServiceTest {
                 { ZONE, "/admin/a", Arrays.asList("/zone/**", "/admin/**"), SERVICEID + ".zones." + ZONE + ".user",
                         false },
                 { null, "/blah/../zone/a", Arrays.asList("/zone/**", "/admin/**"), "scope.none", true },
-                { null, "/blah/%2e%2e/admin/a", Arrays.asList("/zone/**", "/admin/**"), "scope.none", true } };
+                { null, "/blah/%2e%2e/admin/a", Arrays.asList("/zone/**", "/admin/**"), "scope.none", true },
+
+                // request with relative path that could not be normalized because of a special character;
+                // as a result, such requests are considered as a zone-specific requests
+                { ZONE, "/a/..\\zone/", Arrays.asList("/zone/**"), SERVICEID + ".zones." + ZONE + ".user", true },
+                { ZONE, "/a/..?zone/", Arrays.asList("/zone/**"), SERVICEID + ".zones." + ZONE + ".user", true },
+                { null, "/a/..\\zone/", Arrays.asList("/zone/**"), SERVICEID + "scope.none", false },
+        };
     }
 
     private OAuth2Authentication loadAuthenticationWithZoneAsHeader(final String configuredHeaderNames,
@@ -323,12 +331,44 @@ public class ZacTokenServiceTest {
         tokenServices.readAccessToken(accessToken);
     }
 
-    @Test
-    public void testNormalizeUri() {
+    @Test(dataProvider = "requestUriProvider")
+    public void testNormalizeUri(final String requestUri, final String expectedUri) {
         ZoneAwareFastTokenService tokenService = new ZoneAwareFastTokenService();
+        Assert.assertEquals(tokenService.normalizeUri(requestUri), expectedUri);
+    }
 
-        Assert.assertEquals(tokenService.normalizeUri("/v1/admin"), "/v1/admin");
-        Assert.assertEquals(tokenService.normalizeUri("/v1/hello/../admin"), "/v1/admin");
-        Assert.assertEquals(tokenService.normalizeUri("/v1/hello/%2e%2e/admin"), "/v1/admin");
+    @DataProvider
+    private Object[][] requestUriProvider() {
+        return combine(path(), pathWithSpecialCharacters(), relativePath(), relativePathWithSpecialCharacters());
+    }
+
+    private Object[][] path() {
+        return new Object[][] { { "/v1/admin", "/v1/admin" } };
+    }
+
+    private Object[][] pathWithSpecialCharacters() {
+        return new Object[][] { { "/v1/subject/joe%40gmail.com", "/v1/subject/joe@gmail.com" },
+                { "/v1/subject/Jane%20Doe", "/v1/subject/Jane%20Doe" },
+                { "/v1/subject/Jane Doe", "/v1/subject/Jane%20Doe" } };
+    }
+
+    private Object[][] relativePath() {
+        return new Object[][] { { "/v1/hello/../admin", "/v1/admin" }, { "/v1/hello/%2e%2e/admin", "/v1/admin" } };
+    }
+
+    private Object[][] relativePathWithSpecialCharacters() {
+        return new Object[][] { { "/v1/hello/%2e%2e/policy-set/my%20policy%20set", "/v1/policy-set/my%20policy%20set" },
+                { "/v1/hello/%2e%2e/resource/%2Falarms%2Fsites%2Fsanramon", "/v1/resource/alarms/sites/sanramon" },
+                { "/blah/..\\global/a", "/blah/..%5Cglobal/a" }, { "/blah\\../global/a", "/blah%5C../global/a" },
+                { "/blah\\/../global/a", "/global/a" }, { "/blah/../\\global/a", "/%5Cglobal/a" },
+                { "/blah/..?global/a", "/blah/..%3Fglobal/a" } };
+    }
+
+    private static Object[][] combine(final Object[][]... testData) {
+        List<Object[]> result = Lists.newArrayList();
+        for (Object[][] t : testData) {
+            result.addAll(Arrays.asList(t));
+        }
+        return result.toArray(new Object[result.size()][]);
     }
 }

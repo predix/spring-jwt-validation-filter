@@ -28,8 +28,10 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.apache.commons.collections4.map.PassiveExpiringMap;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.springframework.beans.factory.InitializingBean;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
@@ -63,7 +65,7 @@ import com.ge.predix.uaa.token.lib.exceptions.IssuerNotTrustedException;
  * fetched at startup, to verify the token.
  *
  */
-public class FastTokenServices implements ResourceServerTokenServices {
+public class FastTokenServices implements ResourceServerTokenServices, InitializingBean {
 
     private static final Log LOG = LogFactory.getLog(FastTokenServices.class);
 
@@ -77,11 +79,19 @@ public class FastTokenServices implements ResourceServerTokenServices {
 
     private int tokenKeyRequestTimeoutSeconds = 2;
 
+    //Default Expiration Time in Millis: 24 hours
+    private long issuerPublicKeyTTL = 86400000L;
+
     private List<String> trustedIssuers;
 
-    private final Map<String, SignatureVerifier> tokenKeys = new HashMap<>();
+    private Map<String, SignatureVerifier> tokenKeys;
 
-    // public FastTokenServices() {}//Default constructor not needed
+//     public FastTokenServices() {} Default Constructor not needed
+
+    @Override
+    public void afterPropertiesSet() throws Exception {
+        this.tokenKeys = new PassiveExpiringMap<>(this.issuerPublicKeyTTL);
+    }
 
     public void setTokenKeyRequestTimeout(final int tokenKeyRequestTimeout) {
         this.tokenKeyRequestTimeoutSeconds = tokenKeyRequestTimeout;
@@ -375,5 +385,9 @@ public class FastTokenServices implements ResourceServerTokenServices {
 
     public void setTrustedIssuers(final List<String> trustedIssuers) {
         this.trustedIssuers = trustedIssuers;
+    }
+
+    public void setIssuerPublicKeyTTL(final long issuerPublicKeyTTL) {
+        this.issuerPublicKeyTTL = issuerPublicKeyTTL;
     }
 }

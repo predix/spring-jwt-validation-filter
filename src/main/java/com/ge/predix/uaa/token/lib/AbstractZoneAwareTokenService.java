@@ -18,7 +18,7 @@ package com.ge.predix.uaa.token.lib;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URI;
-import java.net.URLDecoder;
+import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Collection;
@@ -43,6 +43,7 @@ import org.springframework.security.oauth2.provider.OAuth2Authentication;
 import org.springframework.security.oauth2.provider.token.ResourceServerTokenServices;
 import org.springframework.util.AntPathMatcher;
 import org.springframework.web.client.HttpStatusCodeException;
+import org.springframework.web.util.UriUtils;
 
 /**
  *
@@ -155,9 +156,20 @@ public abstract class AbstractZoneAwareTokenService implements ResourceServerTok
     String normalizeUri(final String requestUri) {
         String normalizedUri = null;
         try {
-            normalizedUri = URI.create(URLDecoder.decode(requestUri, StandardCharsets.UTF_8.name())).normalize()
-                    .toString();
+            // Decode request URI to resolve percent-encoded special characters.
+            // For example, "/v1/hello/%2e%2e/policy-set/my%20policy" --> "/v1/hello/../policy-set/my policy"
+            String decodedUri = UriUtils.decode(requestUri, StandardCharsets.UTF_8.name());
+
+            // Encode URI again to percent-encode "non-friendly" characters that cause URISyntaxException.
+            // For example, "/v1/hello/../policy-set/my policy" --> "/v1/hello/../policy-set/my%20policy"
+            String encodedUri = UriUtils.encodePath(decodedUri, StandardCharsets.UTF_8.name());
+
+            // Normalize URI to resolve relative paths:
+            // For example, "/v1/hello/../policy-set/my%20policy" --> "/v1/policy-set/my%20policy"
+            normalizedUri = new URI(encodedUri).normalize().toString();
         } catch (UnsupportedEncodingException e) {
+            throw new InvalidRequestException("Unable to normalize request URL: " + requestUri, e);
+        } catch (URISyntaxException e) {
             throw new InvalidRequestException("Unable to normalize request URL: " + requestUri, e);
         }
         return normalizedUri;
