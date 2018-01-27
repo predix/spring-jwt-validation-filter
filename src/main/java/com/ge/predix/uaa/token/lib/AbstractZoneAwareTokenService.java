@@ -30,6 +30,9 @@ import javax.servlet.http.HttpServletRequest;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.BeansException;
+import org.springframework.beans.factory.BeanFactory;
+import org.springframework.beans.factory.BeanFactoryAware;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Required;
 import org.springframework.http.HttpStatus;
@@ -49,7 +52,7 @@ import org.springframework.web.util.UriUtils;
  *
  * @author 212304931
  */
-public abstract class AbstractZoneAwareTokenService implements ResourceServerTokenServices {
+public abstract class AbstractZoneAwareTokenService implements ResourceServerTokenServices, BeanFactoryAware {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractZoneAwareTokenService.class);
 
@@ -62,8 +65,6 @@ public abstract class AbstractZoneAwareTokenService implements ResourceServerTok
     private DefaultZoneConfiguration defaultZoneConfig;
 
     private FastTokenServices defaultFastTokenService;
-
-    private FastTokenServicesCreator fastRemoteTokenServicesCreator = new FastTokenServicesCreator();
 
     @Autowired(required = true)
     private HttpServletRequest request;
@@ -79,6 +80,8 @@ public abstract class AbstractZoneAwareTokenService implements ResourceServerTok
     private boolean storeClaims = false;
 
     private boolean useHttps = true;
+
+    private BeanFactory beanFactory;
 
     @Override
     public OAuth2Authentication loadAuthentication(final String accessToken)
@@ -190,10 +193,21 @@ public abstract class AbstractZoneAwareTokenService implements ResourceServerTok
 
     protected FastTokenServices createFastTokenService(final List<String> trustedIssuers) {
         FastTokenServices tokenServices;
-        tokenServices = this.fastRemoteTokenServicesCreator.newInstance();
-        tokenServices.setStoreClaims(true);
-        tokenServices.setUseHttps(this.useHttps);
-        tokenServices.setTrustedIssuers(trustedIssuers);
+        try {
+            tokenServices = this.beanFactory.getBean(FastTokenServices.class);
+        } catch (BeansException beansException) {
+            tokenServices = new FastTokenServices();
+            try {
+                tokenServices.setIssuerPublicKeyTTL(-1L);
+                tokenServices.setStoreClaims(true);
+                tokenServices.setUseHttps(this.useHttps);
+                tokenServices.setTrustedIssuers(trustedIssuers);
+                tokenServices.afterPropertiesSet();
+            } catch (Exception exception) {
+                //This would not happen as the TTL is intiailized, need for the compiler
+                exception.printStackTrace();
+            }
+        }
         return tokenServices;
     }
 
@@ -239,10 +253,6 @@ public abstract class AbstractZoneAwareTokenService implements ResourceServerTok
         this.defaultFastTokenService = defaultFastTokenService;
     }
 
-    public void setFastRemoteTokenServicesCreator(final FastTokenServicesCreator fastRemoteTokenServicesCreator) {
-        this.fastRemoteTokenServicesCreator = fastRemoteTokenServicesCreator;
-    }
-
     public void setServiceBaseDomain(final String serviceBaseDomain) {
         this.serviceBaseDomainList = splitCSV(serviceBaseDomain);
     }
@@ -280,4 +290,8 @@ public abstract class AbstractZoneAwareTokenService implements ResourceServerTok
         return this.useSubdomainsForZones;
     }
 
+    @Override
+    public void setBeanFactory(final BeanFactory beanFactory) throws BeansException {
+        this.beanFactory = beanFactory;
+    }
 }

@@ -178,6 +178,18 @@ public class TestTokenUtil {
         return openIdToken.getValue();
     }
 
+    public String mockAccessToken(final String issuerId, final int validitySeconds, final String zoneUserScope) {
+        Collection<GrantedAuthority> clientScopes = Arrays.asList(new GrantedAuthority[] {
+                new SimpleGrantedAuthority("uaa.resource"), new SimpleGrantedAuthority(zoneUserScope) });
+        Set<String> requestedScopes = new HashSet<>(Arrays.asList(new String[] { "openid", zoneUserScope }));
+        Set<String> resourceIds = new HashSet<>(Arrays.asList(new String[] { "none" }));
+        DefaultOAuth2AccessToken openIdToken = createAccessToken(issuerId,
+                "1adc931e-d65f-4357-b90d-dd4131b8749a", "marissa", "marissa@test.com", validitySeconds, clientScopes,
+                requestedScopes, "cf", resourceIds, "passsword", null, null, null, null, System.currentTimeMillis(),
+                "uaa", false);
+        return openIdToken.getValue();
+    }
+
     private DefaultOAuth2AccessToken createAccessToken(final String issuerId, final String userId,
             final String username, final String userEmail, final int validitySeconds,
             final Collection<GrantedAuthority> clientScopes, final Set<String> requestedScopes, final String clientId,

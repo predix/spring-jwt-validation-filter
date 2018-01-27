@@ -16,9 +16,18 @@
 
 package com.ge.predix.uaa.token.lib;
 
+@Deprecated
 public class FastTokenServicesCreator {
 
     public FastTokenServices newInstance() {
-        return new FastTokenServices();
+        FastTokenServices fastTokenServices = new FastTokenServices();
+        fastTokenServices.setIssuerPublicKeyTTL(-1L);
+        try {
+            fastTokenServices.afterPropertiesSet();
+        } catch (Exception e) {
+            //This would not happen as the TTL is intiailized, need for the compiler
+            e.printStackTrace();
+        }
+        return fastTokenServices;
     }
 }
