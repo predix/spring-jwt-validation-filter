@@ -16,6 +16,7 @@
 
 package com.ge.predix.uaa.token.lib;
 
+import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.when;
 
 import java.util.Arrays;
@@ -29,6 +30,8 @@ import javax.servlet.http.HttpServletRequest;
 import org.apache.commons.lang3.StringUtils;
 import org.mockito.Matchers;
 import org.mockito.Mockito;
+import org.springframework.beans.factory.BeanFactory;
+import org.springframework.beans.factory.NoSuchBeanDefinitionException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.GrantedAuthority;
@@ -68,7 +71,7 @@ public class ZacTokenServiceTest {
     public void testLoadAuthenticationNoHeaderOrBaseDomain() throws Exception {
         // testing when zone id is not null
         ZacTokenService zacTokenServices = configureZacTokenService("", null, "", true, Collections.EMPTY_LIST,
-                Collections.EMPTY_LIST, null);
+                Collections.EMPTY_LIST, null, true);
         zacTokenServices.afterPropertiesSet();
     }
 
@@ -80,6 +83,7 @@ public class ZacTokenServiceTest {
                 "/test/resource", Arrays.asList("/zone/**"));
     }
 
+    @Test
     public void testLoadAuthenticationWhenZoneIdisNull() {
         // testing when zone is null, for a non-zone specific request
         assertAuthentication(loadAuthenticationWithZoneAsHeader(PREDIX_ZONE_HEADER_NAME, BASE_DOMAIN, null, true,
@@ -167,18 +171,27 @@ public class ZacTokenServiceTest {
     }
 
     private OAuth2Authentication loadAuthenticationWithZoneAsHeader(final String configuredHeaderNames,
-            final String configuredBaseDomains, final String requestZoneName, final Boolean useSubdomainsForZones,
-            final String userScopes, final String requestUri, final List<String> nonZoneUriPatterns) {
+        final String configuredBaseDomains, final String requestZoneName, final Boolean useSubdomainsForZones,
+        final String userScopes, final String requestUri, final List<String> nonZoneUriPatterns) {
+        return loadAuthenticationWithZoneAsHeader(configuredHeaderNames, configuredBaseDomains, requestZoneName,
+                useSubdomainsForZones, userScopes, requestUri, nonZoneUriPatterns, true);
+    }
 
-        FastTokenServices mockFTS = mockFastTokenService(userScopes);
-        FastTokenServicesCreator mockFTSC = Mockito.mock(FastTokenServicesCreator.class);
-        when(mockFTSC.newInstance()).thenReturn(mockFTS);
+    private OAuth2Authentication loadAuthenticationWithZoneAsHeader(final String configuredHeaderNames,
+            final String configuredBaseDomains, final String requestZoneName, final Boolean useSubdomainsForZones,
+            final String userScopes, final String requestUri, final List<String> nonZoneUriPatterns,
+            final boolean isFastTokenServiceMocked) {
+
+        FastTokenServices mockFTS = null;
+        if(isFastTokenServiceMocked) {
+            mockFTS = mockFastTokenService(userScopes);
+        }
 
         HttpServletRequest request = mockHttpRequestWithZoneAsHeader(requestZoneName, requestUri);
 
         List<String> trustedIssuers = configureTrustedIssuers(requestZoneName);
-        ZacTokenService zacTokenServices = configureZacTokenService(configuredHeaderNames, mockFTSC,
-                configuredBaseDomains, useSubdomainsForZones, trustedIssuers, nonZoneUriPatterns, request);
+        ZacTokenService zacTokenServices = configureZacTokenService(configuredHeaderNames, mockFTS,
+                configuredBaseDomains, useSubdomainsForZones, trustedIssuers, nonZoneUriPatterns, request, isFastTokenServiceMocked);
 
         return executeZacTokenServices(zacTokenServices, mockFTS, trustedIssuers, userScopes);
     }
@@ -188,14 +201,11 @@ public class ZacTokenServiceTest {
             final String userScopes, final String requestUri, final List<String> nonZoneUriPatterns) {
 
         FastTokenServices mockFTS = mockFastTokenService(userScopes);
-        FastTokenServicesCreator mockFTSC = Mockito.mock(FastTokenServicesCreator.class);
-        when(mockFTSC.newInstance()).thenReturn(mockFTS);
-
         HttpServletRequest request = mockHttpRequestWithZoneAsSubdomain(requestZoneName, requestUri);
 
         List<String> trustedIssuers = configureTrustedIssuers(requestZoneName);
-        ZacTokenService zacTokenServices = configureZacTokenService(configuredHeaderNames, mockFTSC,
-                configuredBaseDomains, useSubdomainsForZones, trustedIssuers, nonZoneUriPatterns, request);
+        ZacTokenService zacTokenServices = configureZacTokenService(configuredHeaderNames, mockFTS,
+                configuredBaseDomains, useSubdomainsForZones, trustedIssuers, nonZoneUriPatterns, request, true);
 
         return executeZacTokenServices(zacTokenServices, mockFTS, trustedIssuers, userScopes);
     }
@@ -207,11 +217,10 @@ public class ZacTokenServiceTest {
         } catch (Exception e) {
             Assert.fail("Unexpected exception after properties set on zacTokenServices " + e.getMessage());
         }
-        String accessToken = this.tokenUtil.mockAccessToken(600, userScopes);
+        String accessToken = this.tokenUtil.mockAccessToken(trustedIssuers.get(0),600, userScopes);
         OAuth2Authentication loadAuthentication = zacTokenServices.loadAuthentication(accessToken);
 
-        // Making sure we are passing the right set of issuers to the FastTokenServices
-        Mockito.verify(mockFTS).setTrustedIssuers(trustedIssuers);
+        Mockito.verify(mockFTS).loadAuthentication(accessToken);
         return loadAuthentication;
     }
 
@@ -246,12 +255,21 @@ public class ZacTokenServiceTest {
         return trustedIssuers;
     }
 
-    private ZacTokenService configureZacTokenService(final String configuredHeaderNames, final FastTokenServicesCreator mockFTSC,
+    private ZacTokenService configureZacTokenService(final String configuredHeaderNames, final FastTokenServices mockFTS,
             final String configuredBaseDomains, final Boolean useSubdomainsForZones, final List<String> trustedIssuers,
-            final List<String> nonZoneUriPatterns, final HttpServletRequest request) {
+            final List<String> nonZoneUriPatterns, final HttpServletRequest request, final boolean isFastTokenServicesMocked) {
 
         ZacTokenService zacTokenServices = new ZacTokenService();
         RestTemplate mockRestTemplate = configureMockRestTemplate();
+
+        BeanFactory mockBeanFactory = Mockito.mock(BeanFactory.class);
+        if(isFastTokenServicesMocked) {
+            when(mockBeanFactory.getBean(Matchers.any(Class.class))).thenReturn(mockFTS);
+        } else {
+            when(mockBeanFactory.getBean(Matchers.any(Class.class))).thenThrow(new NoSuchBeanDefinitionException("No Bean"));
+        }
+
+        zacTokenServices.setBeanFactory(mockBeanFactory);
         DefaultZoneConfiguration zoneConfig = new DefaultZoneConfiguration();
 
         zoneConfig.setTrustedIssuerIds(trustedIssuers);
@@ -259,7 +277,6 @@ public class ZacTokenServiceTest {
 
         zacTokenServices.setDefaultZoneConfig(zoneConfig);
         zacTokenServices.setServiceZoneHeaders(configuredHeaderNames);
-        zacTokenServices.setFastRemoteTokenServicesCreator(mockFTSC);
         zacTokenServices.setServiceBaseDomain(configuredBaseDomains);
         zacTokenServices.setServiceId(SERVICEID);
         zacTokenServices.setUseSubdomainsForZones(useSubdomainsForZones);
@@ -295,7 +312,7 @@ public class ZacTokenServiceTest {
         Mockito.doNothing().when(mockFTS).setStoreClaims(true);
         Mockito.doNothing().when(mockFTS).setTrustedIssuers(Matchers.anyList());
         Mockito.when(oauth2Authentication.getAuthorities()).thenReturn(authorities);
-        Mockito.when(mockFTS.loadAuthentication(Matchers.anyString())).thenReturn(oauth2Authentication);
+        Mockito.when(mockFTS.loadAuthentication(anyString())).thenReturn(oauth2Authentication);
         return mockFTS;
 
     }
