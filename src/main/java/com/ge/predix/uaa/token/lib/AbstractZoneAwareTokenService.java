@@ -16,23 +16,9 @@
 
 package com.ge.predix.uaa.token.lib;
 
-import java.io.UnsupportedEncodingException;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-
-import javax.servlet.http.HttpServletRequest;
-
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.BeansException;
-import org.springframework.beans.factory.BeanFactory;
-import org.springframework.beans.factory.BeanFactoryAware;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Required;
 import org.springframework.http.HttpStatus;
@@ -48,11 +34,21 @@ import org.springframework.util.AntPathMatcher;
 import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.util.UriUtils;
 
+import javax.servlet.http.HttpServletRequest;
+import java.io.UnsupportedEncodingException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+
 /**
  *
  * @author 212304931
  */
-public abstract class AbstractZoneAwareTokenService implements ResourceServerTokenServices, BeanFactoryAware {
+public abstract class AbstractZoneAwareTokenService implements ResourceServerTokenServices {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractZoneAwareTokenService.class);
 
@@ -80,8 +76,6 @@ public abstract class AbstractZoneAwareTokenService implements ResourceServerTok
     private boolean storeClaims = false;
 
     private boolean useHttps = true;
-
-    private BeanFactory beanFactory;
 
     private FastTokenServicesCreator fastRemoteTokenServicesCreator = new FastTokenServicesCreator();
 
@@ -287,8 +281,4 @@ public abstract class AbstractZoneAwareTokenService implements ResourceServerTok
         return this.useSubdomainsForZones;
     }
 
-    @Override
-    public void setBeanFactory(final BeanFactory beanFactory) throws BeansException {
-        this.beanFactory = beanFactory;
-    }
 }

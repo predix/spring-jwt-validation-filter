@@ -86,7 +86,12 @@ public class FastTokenServices implements ResourceServerTokenServices, Initializ
 
     private Map<String, SignatureVerifier> tokenKeys;
 
-//     public FastTokenServices() {} Default Constructor not needed
+    /**
+     * Creates the FastTokenServices with the Default TTL of 24 Hours.
+     */
+     public FastTokenServices() {
+         init();
+     }
 
     @Override
     public void afterPropertiesSet() throws Exception {
