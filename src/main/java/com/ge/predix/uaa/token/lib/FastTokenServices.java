@@ -90,6 +90,10 @@ public class FastTokenServices implements ResourceServerTokenServices, Initializ
 
     @Override
     public void afterPropertiesSet() throws Exception {
+        this.init();
+    }
+
+    protected void init() {
         this.tokenKeys = new PassiveExpiringMap<>(this.issuerPublicKeyTTL);
     }
 
