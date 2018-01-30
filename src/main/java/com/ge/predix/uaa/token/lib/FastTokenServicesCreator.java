@@ -21,11 +21,10 @@ package com.ge.predix.uaa.token.lib;
  */
 public class FastTokenServicesCreator {
 
+    /**
+     * @return an instance of {@link FastTokenServices} with indefinite caching of issuer public keys.
+     */
     public FastTokenServices newInstance() {
-        FastTokenServices fastTokenServices = new FastTokenServices();
-        //ZacTokenServices has its own time-sensitive cache, so no need for expiring on FastTokenServices
-        fastTokenServices.setIssuerPublicKeyTTL(-1L);
-        fastTokenServices.init();
-        return fastTokenServices;
+        return new FastTokenServices(-1L);
     }
 }

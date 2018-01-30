@@ -189,6 +189,8 @@ public abstract class AbstractZoneAwareTokenService implements ResourceServerTok
 
     protected FastTokenServices createFastTokenService(final List<String> trustedIssuers) {
         FastTokenServices tokenServices;
+        //Create FastTokenServices with indefinite caching of public keys, since the tokenServices are cached here 
+        //with a TTL.
         tokenServices = this.fastRemoteTokenServicesCreator.newInstance();
         tokenServices.setStoreClaims(true);
         tokenServices.setUseHttps(this.useHttps);

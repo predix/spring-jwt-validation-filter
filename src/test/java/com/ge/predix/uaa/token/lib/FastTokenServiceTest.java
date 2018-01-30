@@ -98,7 +98,7 @@ public class FastTokenServiceTest {
     public void testLoadAuthenticationForUpdatedIssuerTokenSigningKeyPositive() throws Exception {
         FastTokenServices fastTokenServices  = new FastTokenServices();
         fastTokenServices.setTrustedIssuers(trustedIssuers());
-        fastTokenServices.setIssuerPublicKeyTTL(3000L);
+        fastTokenServices.setIssuerPublicKeyTTLMillis(3000L);
         fastTokenServices.setRestTemplate(mockRestTemplate(false));
         fastTokenServices.afterPropertiesSet();
         String accessToken = this.testTokenUtil.mockAccessToken(60, false);
@@ -117,7 +117,7 @@ public class FastTokenServiceTest {
     public void testLoadAuthenticationForUpdatedIssuerTokenSigningKeyNegative() throws Exception {
         FastTokenServices fastTokenServices  = new FastTokenServices();
         fastTokenServices.setTrustedIssuers(trustedIssuers());
-        fastTokenServices.setIssuerPublicKeyTTL(3000L);
+        fastTokenServices.setIssuerPublicKeyTTLMillis(3000L);
         fastTokenServices.setRestTemplate(mockRestTemplate(false));
         fastTokenServices.afterPropertiesSet();
         String accessToken = this.testTokenUtil.mockAccessToken(60, false);
