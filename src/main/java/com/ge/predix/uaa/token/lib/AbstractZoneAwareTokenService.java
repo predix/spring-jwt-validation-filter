@@ -16,17 +16,6 @@
 
 package com.ge.predix.uaa.token.lib;
 
-import java.io.UnsupportedEncodingException;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-
-import javax.servlet.http.HttpServletRequest;
-
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,6 +33,16 @@ import org.springframework.security.oauth2.provider.token.ResourceServerTokenSer
 import org.springframework.util.AntPathMatcher;
 import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.util.UriUtils;
+
+import javax.servlet.http.HttpServletRequest;
+import java.io.UnsupportedEncodingException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
 
 /**
  *
@@ -63,8 +62,6 @@ public abstract class AbstractZoneAwareTokenService implements ResourceServerTok
 
     private FastTokenServices defaultFastTokenService;
 
-    private FastTokenServicesCreator fastRemoteTokenServicesCreator = new FastTokenServicesCreator();
-
     @Autowired(required = true)
     private HttpServletRequest request;
 
@@ -79,6 +76,8 @@ public abstract class AbstractZoneAwareTokenService implements ResourceServerTok
     private boolean storeClaims = false;
 
     private boolean useHttps = true;
+
+    private FastTokenServicesCreator fastRemoteTokenServicesCreator = new FastTokenServicesCreator();
 
     @Override
     public OAuth2Authentication loadAuthentication(final String accessToken)
@@ -190,12 +189,15 @@ public abstract class AbstractZoneAwareTokenService implements ResourceServerTok
 
     protected FastTokenServices createFastTokenService(final List<String> trustedIssuers) {
         FastTokenServices tokenServices;
+        //Create FastTokenServices with indefinite caching of public keys, since the tokenServices are cached here 
+        //with a TTL.
         tokenServices = this.fastRemoteTokenServicesCreator.newInstance();
         tokenServices.setStoreClaims(true);
         tokenServices.setUseHttps(this.useHttps);
         tokenServices.setTrustedIssuers(trustedIssuers);
         return tokenServices;
     }
+
 
     @Override
     public OAuth2AccessToken readAccessToken(final String accessToken) {
@@ -219,6 +221,11 @@ public abstract class AbstractZoneAwareTokenService implements ResourceServerTok
         this.storeClaims = storeClaims;
     }
 
+    public void setFastRemoteTokenServicesCreator(final FastTokenServicesCreator fastRemoteTokenServicesCreator) {
+        this.fastRemoteTokenServicesCreator = fastRemoteTokenServicesCreator;
+    }
+
+
     public boolean isUseHttps() {
         return this.useHttps;
     }
@@ -237,10 +244,6 @@ public abstract class AbstractZoneAwareTokenService implements ResourceServerTok
 
     public void setDefaultFastTokenService(final FastTokenServices defaultFastTokenService) {
         this.defaultFastTokenService = defaultFastTokenService;
-    }
-
-    public void setFastRemoteTokenServicesCreator(final FastTokenServicesCreator fastRemoteTokenServicesCreator) {
-        this.fastRemoteTokenServicesCreator = fastRemoteTokenServicesCreator;
     }
 
     public void setServiceBaseDomain(final String serviceBaseDomain) {
