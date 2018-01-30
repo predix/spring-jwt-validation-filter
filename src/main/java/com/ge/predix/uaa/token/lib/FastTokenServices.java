@@ -67,6 +67,8 @@ import com.ge.predix.uaa.token.lib.exceptions.IssuerNotTrustedException;
  */
 public class FastTokenServices implements ResourceServerTokenServices, InitializingBean {
 
+    private static final long DEFAULT_TTL_24HR_MILLIS = 86400000L;
+
     private static final Log LOG = LogFactory.getLog(FastTokenServices.class);
 
     private RestOperations restTemplate;
@@ -79,18 +81,33 @@ public class FastTokenServices implements ResourceServerTokenServices, Initializ
 
     private int tokenKeyRequestTimeoutSeconds = 2;
 
-    //Default Expiration Time in Millis: 24 hours
-    private long issuerPublicKeyTTL = 86400000L;
+    private long issuerPublicKeyTTLMillis = DEFAULT_TTL_24HR_MILLIS;
 
     private List<String> trustedIssuers;
 
     private Map<String, SignatureVerifier> tokenKeys;
 
-//     public FastTokenServices() {} Default Constructor not needed
+    /**
+     * Creates the FastTokenServices with {@link FastTokenServices#DEFAULT_TTL_24HR_MILLIS}.
+     */
+     public FastTokenServices() {
+         initTokenKeysMap(DEFAULT_TTL_24HR_MILLIS);
+     }
+
+     /**
+      * @param issuerPublicKeyTTLMillis A value of -1 implies cache never expires.
+      */
+     public FastTokenServices(final long issuerPublicKeyTTLMillis) {
+         initTokenKeysMap(issuerPublicKeyTTLMillis);
+     }
 
     @Override
     public void afterPropertiesSet() throws Exception {
-        this.tokenKeys = new PassiveExpiringMap<>(this.issuerPublicKeyTTL);
+        initTokenKeysMap(issuerPublicKeyTTLMillis);
+    }
+
+    private void initTokenKeysMap(final long ttlMillis) {
+        this.tokenKeys = new PassiveExpiringMap<>(ttlMillis);
     }
 
     public void setTokenKeyRequestTimeout(final int tokenKeyRequestTimeout) {
@@ -387,7 +404,7 @@ public class FastTokenServices implements ResourceServerTokenServices, Initializ
         this.trustedIssuers = trustedIssuers;
     }
 
-    public void setIssuerPublicKeyTTL(final long issuerPublicKeyTTL) {
-        this.issuerPublicKeyTTL = issuerPublicKeyTTL;
+    public void setIssuerPublicKeyTTLMillis(final long ttlMillis) {
+        this.issuerPublicKeyTTLMillis = ttlMillis;
     }
 }

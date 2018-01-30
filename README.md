@@ -7,7 +7,7 @@ for loading spring authentication based on a JWT access token in a incoming requ
 
 FastTokenServices is a alternative for `org.springframework.security.oauth2.provider.token.RemoteTokenServices`. 
 It is "fast" because it does not make calls to UAA’s /check_token endpoint every time it verifies a token. 
-Instead, it caches UAA’s token public key after the first fetch for a defined TTL (see property issuerPublicKeyTTL), to verify the JWT in the request.
+Instead, it caches UAA’s token public key after the first fetch for a defined TTL (see property `issuerPublicKeyTTLMillis`), to verify the JWT in the request.
 
 
 ## Usage    
@@ -24,7 +24,7 @@ Example bean:
             <value>https://testzone2.localhost/uaa/oauth/token</value>
         </util:list>
         <!-- And optionally, to customize issuerPublicKey refresh interval (default is 24 hours)
-            <property name="issuerPublicKeyTTL" value="3600000L" />
+            <property name="issuerPublicKeyTTLMillis" value="3600000L" />
         -->
     </bean>
 ```

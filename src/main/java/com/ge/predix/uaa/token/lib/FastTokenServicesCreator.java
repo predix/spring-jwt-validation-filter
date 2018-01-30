@@ -16,9 +16,15 @@
 
 package com.ge.predix.uaa.token.lib;
 
+/**
+ * <code>FastTokenServicesCreator</code> not meant for public use: use <code>ZacTokenServices</code> instead.
+ */
 public class FastTokenServicesCreator {
 
+    /**
+     * @return an instance of {@link FastTokenServices} with indefinite caching of issuer public keys.
+     */
     public FastTokenServices newInstance() {
-        return new FastTokenServices();
+        return new FastTokenServices(-1L);
     }
 }
