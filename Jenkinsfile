@@ -37,6 +37,7 @@ pipeline {
              post {
                 always {
                     junit '**/surefire-reports/junitreports/TEST*.xml'
+                    step([$class: 'JacocoPublisher', execPattern: '**/**.exec', maximumBranchCoverage: '90', maximumInstructionCoverage: '90'])
                 }
                 success {
                     echo 'Build and Test stage completed'
