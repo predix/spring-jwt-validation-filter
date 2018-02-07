@@ -22,7 +22,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.ge.predix</groupId>
     <artifactId>uaa-token-lib</artifactId>
-    <version>3.3.7-SNAPSHOT</version>
+    <version>3.3.7</version>
     <name>Predix UAA Token Library</name>
     <description>This library contains classes that help verify UAA issued JSON Web Tokens.</description>
     <packaging>jar</packaging>
