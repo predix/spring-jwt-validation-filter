@@ -49,7 +49,11 @@ pipeline {
         }
         stage('Publish Artifacts') {
             agent {
-                label 'dind'
+                docker {
+                    image 'maven:3.5'
+                    label 'dind'
+                    args '-v /root/.m2:/root/.m2'
+                }
             }
             when {
                 expression { env.BRANCH_NAME == 'master' || env.BRANCH_NAME == 'develop' }
