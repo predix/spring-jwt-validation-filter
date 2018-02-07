@@ -78,7 +78,14 @@ pipeline {
                         def buildInfo = devcloudArtServer.upload(uploadSpec)
                         devcloudArtServer.publishBuildInfo(buildInfo)
 
-                        uploadSpec.target = "PREDIX-EXT/com/ge/predix/uaa-token-lib/${APP_VERSION}/"
+                        uploadSpec = """{
+                            "files": [
+                                    {
+                                        "pattern": "uaa-token-lib-${APP_VERSION}.jar",
+                                        "target": "PREDIX-EXT/com/ge/predix/uaa-token-lib/${APP_VERSION}/"
+                                    }
+                                ]
+                            }"""
                         buildInfo = predixExternalArtServer.upload(uploadSpec)
                         predixExternalArtServer.publishBuildInfo(buildInfo)
 
