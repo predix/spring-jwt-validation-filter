@@ -49,7 +49,10 @@ pipeline {
         }
         stage('Publish Artifacts') {
             agent {
-                label 'dind'
+                docker {
+                    image 'repo.ci.build.ge.com:8443/predixci-jdk-1.8-base'
+                    label 'dind'
+                }
             }
             when {
                 expression { env.BRANCH_NAME == 'master' || env.BRANCH_NAME == 'develop' }
@@ -89,10 +92,17 @@ pipeline {
                         buildInfo = predixExternalArtServer.upload(uploadSpec)
                         predixExternalArtServer.publishBuildInfo(buildInfo)
 
-                        sh (returnStdout: true, script: '''
+                        sh """#!/usr/bin/env bash
+                            set -ex
                             #Deploy/Release to maven central repository
-                            mvn clean deploy -P release -s spring-filters-config/mvn_settings_noproxy.xml -D stagingProfileId=14c243d3be5b9e -e
-                        ''')
+                            apk update
+                            apk add --no-cache gnupg
+                            gpg --version
+                            ln -s ${WORKSPACE} /working-dir
+                            mvn clean deploy -B -P release -s spring-filters-config/mvn_settings_noproxy.xml \\
+                             -D gpg.homedir=/working-dir/spring-filters-config/gnupg -D stagingProfileId=14c243d3be5b9e \\
+                             -D skipTests -e
+                        """
                     }
                     else {
                         echo 'Branch is develop push to MAAXA-MVN-SNAPSHOT'
