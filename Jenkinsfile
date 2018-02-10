@@ -50,13 +50,15 @@ pipeline {
         stage('Publish Artifacts') {
             agent {
                 docker {
-                    image 'maven:3.5'
+                    image 'repo.ci.build.ge.com:8443/predixci-jdk-1.8-base'
                     label 'dind'
-                    args '-v /root/.m2:/root/.m2'
                 }
             }
             when {
                 expression { env.BRANCH_NAME == 'master' || env.BRANCH_NAME == 'develop' }
+            }
+            environment {
+                MAVEN_CENTRAL_STAGING_PROFILE_ID=credentials('MAVEN_CENTRAL_STAGING_PROFILE_ID')
             }
             steps {
                 dir('spring-filters-config') {
@@ -93,10 +95,17 @@ pipeline {
                         buildInfo = predixExternalArtServer.upload(uploadSpec)
                         predixExternalArtServer.publishBuildInfo(buildInfo)
 
-                        sh (returnStdout: true, script: '''
+                        sh """#!/usr/bin/env bash
+                            set -ex
                             #Deploy/Release to maven central repository
-                            mvn clean deploy -P release -s spring-filters-config/mvn_settings_noproxy.xml -D stagingProfileId=14c243d3be5b9e -e
-                        ''')
+                            apk update
+                            apk add --no-cache gnupg
+                            gpg --version
+                            ln -s ${WORKSPACE} /working-dir
+                            mvn clean deploy -B -P release -s spring-filters-config/mvn_settings_noproxy.xml \\
+                             -D gpg.homedir=/working-dir/spring-filters-config/gnupg -D stagingProfileId=$MAVEN_CENTRAL_STAGING_PROFILE_ID \\
+                             -D skipTests -e
+                        """
                     }
                     else {
                         echo 'Branch is develop push to MAAXA-MVN-SNAPSHOT'

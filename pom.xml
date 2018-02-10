@@ -22,7 +22,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.ge.predix</groupId>
     <artifactId>uaa-token-lib</artifactId>
-    <version>3.3.7</version>
+    <version>3.3.8</version>
     <name>Predix UAA Token Library</name>
     <description>This library contains classes that help verify UAA issued JSON Web Tokens.</description>
     <packaging>jar</packaging>
@@ -285,7 +285,7 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-gpg-plugin</artifactId>
-                        <version>1.5</version>
+                        <version>1.6</version>
                         <executions>
                             <execution>
                                 <id>sign-artifacts</id>
@@ -293,6 +293,15 @@
                                 <goals>
                                     <goal>sign</goal>
                                 </goals>
+                                <configuration>
+                                    <gpgArguments>
+                                        <arg>--pinentry-mode</arg>
+                                        <arg>loopback</arg>
+                                        <arg>--batch</arg>
+                                        <arg>--no-tty</arg>
+                                        <arg>--yes</arg>
+                                    </gpgArguments>
+                                </configuration>
                             </execution>
                         </executions>
                     </plugin>
