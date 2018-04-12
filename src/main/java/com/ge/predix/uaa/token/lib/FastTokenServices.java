@@ -25,10 +25,10 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.apache.commons.collections4.map.PassiveExpiringMap;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.springframework.beans.factory.InitializingBean;
@@ -58,12 +58,13 @@ import org.springframework.web.util.UriComponentsBuilder;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.ge.predix.uaa.token.lib.exceptions.IssuerNotTrustedException;
+import com.github.benmanes.caffeine.cache.Caffeine;
+import com.github.benmanes.caffeine.cache.LoadingCache;
 
 /**
  * FastRemotetokenServices is a replacement for the original RemoteTokenServices. It is "fast" because it does not
  * make calls to UAA's /check_token endpoint every time it verifies a token. Instead, it uses UAA's token signing key,
  * fetched at startup, to verify the token.
- *
  */
 public class FastTokenServices implements ResourceServerTokenServices, InitializingBean {
 
@@ -85,33 +86,52 @@ public class FastTokenServices implements ResourceServerTokenServices, Initializ
 
     private List<String> trustedIssuers;
 
-    private Map<String, SignatureVerifier> tokenKeys;
+    private LoadingCache<String, SignatureVerifier> tokenKeys;
 
     /**
      * Creates the FastTokenServices with {@link FastTokenServices#DEFAULT_TTL_24HR_MILLIS}.
      */
-     public FastTokenServices() {
-         initTokenKeysMap(DEFAULT_TTL_24HR_MILLIS);
-     }
+    public FastTokenServices() {
+        initTokenKeysCache(DEFAULT_TTL_24HR_MILLIS);
+    }
 
-     /**
-      * @param issuerPublicKeyTTLMillis A value of -1 implies cache never expires.
-      */
-     public FastTokenServices(final long issuerPublicKeyTTLMillis) {
-         initTokenKeysMap(issuerPublicKeyTTLMillis);
-     }
+    /**
+     * @param issuerPublicKeyTTLMillis A value of Long.MAX_VALUE implies cache never expires.
+     */
+    public FastTokenServices(final long issuerPublicKeyTTLMillis) {
+        initTokenKeysCache(issuerPublicKeyTTLMillis);
+    }
 
     @Override
     public void afterPropertiesSet() throws Exception {
-        initTokenKeysMap(issuerPublicKeyTTLMillis);
+        initTokenKeysCache(issuerPublicKeyTTLMillis);
     }
 
-    private void initTokenKeysMap(final long ttlMillis) {
-        this.tokenKeys = new PassiveExpiringMap<>(ttlMillis);
+    private void initTokenKeysCache(final long ttlMillis) {
+     /*
+        Memory leak was identified in performance tests due to a lazy expiration mechanism in passive expiring map.
+        Even though we were initializing passive expiring map with TTL, the entries were not flushed unless a get
+        () call is made on the expired entries or a call that prompts entire map scan, for example size(). This
+        could lead to a memory leak as expired entry might never be retrieved.
+
+        For instance, when loadAuthentication call is made it adds the signature verifier for the token issuer in
+        tokenKeys map. This entry is not removed upon expiration unless another loadAuthentication call made after
+        the expired time with the access token from the same issuer. Abandoned issuers will be stuck in the cache.
+
+        We have decide to use caffeine as the caching solution to address the memory leak.
+     */
+        this.tokenKeys = Caffeine.newBuilder().expireAfterWrite(ttlMillis, TimeUnit.MILLISECONDS)
+                .build(k -> computeSignatureVerifier(k));
     }
 
     public void setTokenKeyRequestTimeout(final int tokenKeyRequestTimeout) {
         this.tokenKeyRequestTimeoutSeconds = tokenKeyRequestTimeout;
+    }
+
+    public SignatureVerifier computeSignatureVerifier(final String iss) {
+        String tokenKey = getTokenKey(iss);
+        SignatureVerifier verifier = getVerifier(tokenKey);
+        return verifier;
     }
 
     @Override
@@ -127,14 +147,23 @@ public class FastTokenServices implements ResourceServerTokenServices, Initializ
         String iss = getIssuerFromClaims(claims);
 
         verifyIssuer(iss);
+        /*
+        getIfPresent() will perform the lookup, which may be null. Then the thread computes the value, which is
+        expensive (hence the cache) and inserts it. This allows for a race where two threads query for the key,
+        compute, and insert. This is known as a cache stampede.
 
-        // check if the singerProvider for that issuer has already in the cache
+        get(key, function) will atomically compute the value when absent. This acquires a per-entry lock so that only
+        one thread does the work, subsequent calls block, and all receive the result. This is known as memoization.
+
+        Caffeine's get will perform a lock-free getIfPresent followed by a blocking computeIfAbsent, which avoids lock
+        contention and duplicate computation work. We try to promote this style (hence get is shorter) and offer
+        LoadingCache with additional functionality if you provide the computation function upfront.
+
+        Inorder to use the lambda functions functionality of cache we need to upgrade java version to 1.8 on
+        spring-jwt-validator.
+         */
         SignatureVerifier verifier = this.tokenKeys.get(iss);
-        if (null == verifier) {
-            String tokenKey = getTokenKey(iss);
-            verifier = getVerifier(tokenKey);
-            this.tokenKeys.put(iss, verifier);
-        }
+        // check if the signatureVerifier for that issuer is already in the cache
 
         JwtHelper.decodeAndVerify(accessToken, verifier);
         verifyTimeWindow(claims);
@@ -200,7 +229,7 @@ public class FastTokenServices implements ResourceServerTokenServices, Initializ
 
     private void verifyIssuer(final String iss) {
         Assert.notEmpty(this.trustedIssuers, "Trusted issuers must be defined for authentication.");
-        
+
         if (!this.trustedIssuers.contains(iss)) {
             throw new IssuerNotTrustedException("The issuer '" + iss + "' is not trusted "
                     + "because it is not in the configured list of trusted issuers.");
