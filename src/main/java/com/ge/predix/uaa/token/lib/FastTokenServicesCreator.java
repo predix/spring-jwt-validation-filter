@@ -25,6 +25,6 @@ public class FastTokenServicesCreator {
      * @return an instance of {@link FastTokenServices} with indefinite caching of issuer public keys.
      */
     public FastTokenServices newInstance() {
-        return new FastTokenServices(-1L);
+        return new FastTokenServices(Long.MAX_VALUE);
     }
 }

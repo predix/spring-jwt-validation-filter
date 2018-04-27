@@ -17,6 +17,7 @@
 package com.ge.predix.uaa.token.lib;
 
 import static com.ge.predix.uaa.token.lib.Claims.USER_ID;
+import static org.mockito.internal.verification.VerificationModeFactory.times;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertNotNull;
 import static org.testng.Assert.assertNull;
@@ -92,6 +93,28 @@ public class FastTokenServiceTest {
                 ((RemoteUserAuthentication) result.getUserAuthentication()).getId());
         assertNotNull(result.getOAuth2Request().getRequestParameters());
         assertNull(result.getOAuth2Request().getRequestParameters().get(Claims.ISS));
+    }
+
+    @Test
+    public void testLoadAuthenticationLoadingCacheExpiry() throws Exception {
+        FastTokenServices fastTokenServices  = Mockito.spy(new FastTokenServices());
+        fastTokenServices.setTrustedIssuers(trustedIssuers());
+        fastTokenServices.setIssuerPublicKeyTTLMillis(1000L);
+        fastTokenServices.setRestTemplate(mockRestTemplate(false));
+        fastTokenServices.afterPropertiesSet();
+        String accessToken = this.testTokenUtil.mockAccessToken(60);
+        //Populate the Cache (Cache computed)
+        fastTokenServices.loadAuthentication(accessToken);
+        Mockito.verify(fastTokenServices,times(1)).computeSignatureVerifier(TOKEN_ISSUER_ID);
+        //Call to make sure that SignatureVerifier is (Cache retrieved)
+        fastTokenServices.loadAuthentication(accessToken);
+        Mockito.verify(fastTokenServices,times(1)).computeSignatureVerifier(TOKEN_ISSUER_ID);
+        //Ensure the Cache entry for issuer times out
+        Thread.sleep(1100L);
+        //Call that tries to populate the Cache again
+        fastTokenServices.loadAuthentication(accessToken);
+        //Validate compute call is made when the entry is not available in Cache (Cache expired and computed again)
+        Mockito.verify(fastTokenServices,times(2)).computeSignatureVerifier(TOKEN_ISSUER_ID);
     }
 
     @Test
@@ -179,7 +202,7 @@ public class FastTokenServiceTest {
     public void testLoadAuthenticationWithNullTokenString() throws Exception {
         this.services.loadAuthentication("null");
     }
-    
+
     @Test(expectedExceptions=IllegalArgumentException.class)
     public void testWithNoTrustedIssuers() {
         FastTokenServices  tokenService = new FastTokenServices();
