@@ -22,7 +22,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.ge.predix</groupId>
     <artifactId>uaa-token-lib</artifactId>
-    <version>3.3.8</version>
+    <version>4.0.0</version>
     <name>Predix UAA Token Library</name>
     <description>This library contains classes that help verify UAA issued JSON Web Tokens.</description>
     <packaging>jar</packaging>
@@ -51,8 +51,8 @@
         <!-- Maven JAVA Version -->
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven-compiler-plugin.version>2.3.2</maven-compiler-plugin.version>
-        <maven.compiler.source>1.7</maven.compiler.source>
-        <maven.compiler.target>1.7</maven.compiler.target>
+        <maven.compiler.source>1.8</maven.compiler.source>
+        <maven.compiler.target>1.8</maven.compiler.target>
         <maven-bundle-plugin.version>2.3.7</maven-bundle-plugin.version>
         <jackson.version>2.5.4</jackson.version>
         <spring-security-jwt.version>1.0.2.RELEASE</spring-security-jwt.version>
@@ -141,6 +141,11 @@
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-log4j12</artifactId>
             <version>1.7.12</version>
+        </dependency>
+        <dependency>
+            <groupId>com.github.ben-manes.caffeine</groupId>
+            <artifactId>caffeine</artifactId>
+            <version>2.6.2</version>
         </dependency>
         <dependency>
             <groupId>org.springframework</groupId>

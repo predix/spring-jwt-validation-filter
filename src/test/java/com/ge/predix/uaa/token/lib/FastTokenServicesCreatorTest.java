@@ -6,8 +6,7 @@ import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
-import java.lang.reflect.Field;
-import java.util.Map;
+import com.github.benmanes.caffeine.cache.LoadingCache;
 
 public class FastTokenServicesCreatorTest {
 
@@ -21,8 +20,8 @@ public class FastTokenServicesCreatorTest {
     @Test
     public void testNewInstance() {
         FastTokenServices tokenServices = creator.newInstance();
-        Map<String, SignatureVerifier> tokenKeys = (Map<String, SignatureVerifier>) ReflectionTestUtils.getField(tokenServices, "tokenKeys");
-        Assert.assertNotNull(tokenKeys,
-                "The TokenKeys Map must have been initialized");
+        LoadingCache<String, SignatureVerifier> tokenKeys = (LoadingCache<String, SignatureVerifier>)
+                ReflectionTestUtils.getField(tokenServices, "tokenKeys");
+        Assert.assertNotNull(tokenKeys, "The TokenKeys Map must have been initialized");
     }
 }
