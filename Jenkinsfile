@@ -3,6 +3,8 @@
 // Define DevCloud Artifactory for publishing non-docker image artifacts
 def devcloudArtServer = Artifactory.server('devcloud')
 def predixExternalArtServer = Artifactory.server('predix-external')
+library "security-ci-commons-shared-lib"
+def NODE = nodeDetails("java")
 
 // Change Snapshot to your own DevCloud Artifactory repo name
 def Snapshot = 'PROPEL'
@@ -50,8 +52,8 @@ pipeline {
         stage('Publish Artifacts') {
             agent {
                 docker {
-                    image 'repo.ci.build.ge.com:8443/predixci-jdk-1.8-base'
-                    label 'dind'
+                    image "${NODE['IMAGE']}"
+                    label "${NODE['LABEL']}"
                 }
             }
             when {
