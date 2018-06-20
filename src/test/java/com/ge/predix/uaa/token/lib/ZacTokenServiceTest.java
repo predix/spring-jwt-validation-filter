@@ -16,6 +16,7 @@
 
 package com.ge.predix.uaa.token.lib;
 
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.when;
 
 import java.util.Arrays;
@@ -119,6 +120,36 @@ public class ZacTokenServiceTest {
                 throw e;
             }
         }
+    }
+
+    @Test
+    public void testFastTokenServicesCache() throws Exception {
+        ZacTokenService zacTokenService = Mockito.spy(new ZacTokenService());
+        zacTokenService.setIssuersTtlSeconds(10);
+        zacTokenService.setOauth2RestTemplate(configureMockRestTemplate());
+        zacTokenService.setServiceId(SERVICEID);
+        zacTokenService.afterPropertiesSet();
+
+        // Verify that FastTokenServices is created and put in the cache
+        FastTokenServices fts = zacTokenService.getOrCreateZoneTokenService(ZONE);
+        Assert.assertNotNull(fts);
+        Mockito.verify(zacTokenService, times(1)).createFastTokenService(ZONE);
+
+        // Verify that FastTokenServices is obtained from the cache
+        fts = zacTokenService.getOrCreateZoneTokenService(ZONE);
+        Assert.assertNotNull(fts);
+        Mockito.verify(zacTokenService, times(1)).createFastTokenService(ZONE);
+    }
+
+    @Test(expectedExceptions = HttpClientErrorException.class)
+    public void testFastTokenServicesCacheException() throws Exception {
+        ZacTokenService zacTokenService = new ZacTokenService();
+        zacTokenService.setIssuersTtlSeconds(10);
+        zacTokenService.setOauth2RestTemplate(configureMockRestTemplate());
+        zacTokenService.setServiceId(SERVICEID);
+        zacTokenService.afterPropertiesSet();
+
+        zacTokenService.getOrCreateZoneTokenService(INVALID_ZONE);
     }
 
     @DataProvider
@@ -284,7 +315,7 @@ public class ZacTokenServiceTest {
     @SuppressWarnings("unchecked")
     private FastTokenServices mockFastTokenService(final String userScopes) {
 
-        Collection<GrantedAuthority> authorities = new HashSet<GrantedAuthority>();
+        Collection<GrantedAuthority> authorities = new HashSet<>();
         authorities.add(new SimpleGrantedAuthority(userScopes));
 
         OAuth2Authentication oauth2Authentication = Mockito.mock(OAuth2Authentication.class);
@@ -321,7 +352,7 @@ public class ZacTokenServiceTest {
 
     private static ResponseEntity<TrustedIssuers> mockTrustedIssuersResponseEntity() {
         TrustedIssuers trustedIssuers = new TrustedIssuers(ZONE_TRUSTED_ISSUERS);
-        return new ResponseEntity<TrustedIssuers>(trustedIssuers, HttpStatus.OK);
+        return new ResponseEntity<>(trustedIssuers, HttpStatus.OK);
     }
 
     @Test(expectedExceptions = UnsupportedOperationException.class)
