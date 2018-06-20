@@ -135,7 +135,14 @@ public class FastTokenServices implements ResourceServerTokenServices, Initializ
     }
 
     @Override
-    public OAuth2Authentication loadAuthentication(final String accessToken) throws AuthenticationException {
+    public OAuth2Authentication loadAuthentication(final String accessToken)
+            throws AuthenticationException, InvalidTokenException {
+
+        if (StringUtils.isEmpty(accessToken)) {
+            LOG.error("Access token is null or empty.");
+            throw new InvalidTokenException("Malformed Access Token");
+        }
+
         Map<String, Object> claims;
         try {
             claims = getTokenClaims(accessToken);
@@ -373,10 +380,6 @@ public class FastTokenServices implements ResourceServerTokenServices, Initializ
     }
 
     protected Map<String, Object> getTokenClaims(final String accessToken) {
-        if (StringUtils.isEmpty(accessToken)) {
-            return null;
-        }
-
         Jwt token = JwtHelper.decode(accessToken);
         Map<String, Object> claims = JsonUtils.readValue(token.getClaims(), new TypeReference<Map<String, Object>>() {
             // Nothing to add here.
