@@ -203,6 +203,14 @@ public class FastTokenServiceTest {
         this.services.loadAuthentication("null");
     }
 
+    /**
+     * Tests that empty token issues an InvalidTokenException.
+     */
+    @Test(expectedExceptions = InvalidTokenException.class, expectedExceptionsMessageRegExp = "Malformed Access Token")
+    public void testLoadAuthenticationWithEmptyToken() throws Exception {
+        this.services.loadAuthentication("");
+    }
+
     @Test(expectedExceptions=IllegalArgumentException.class)
     public void testWithNoTrustedIssuers() {
         FastTokenServices  tokenService = new FastTokenServices();
@@ -287,7 +295,7 @@ public class FastTokenServiceTest {
 
     @Test(expectedExceptions = InvalidTokenException.class)
     public void testVerifyTimeWindowException() {
-        Map<String, Object> claims = new HashMap<String, Object>();
+        Map<String, Object> claims = new HashMap<>();
         claims.put(Claims.IAT, "not-an-expected-long");
         claims.put(Claims.EXP, "not-an-expected-long");
         this.services.verifyTimeWindow(claims);
