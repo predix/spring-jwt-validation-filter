@@ -16,10 +16,9 @@
 
 package com.ge.predix.uaa.token.lib;
 
-import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.collections4.CollectionUtils;
-import org.apache.commons.collections4.map.PassiveExpiringMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.InitializingBean;
@@ -27,6 +26,9 @@ import org.springframework.beans.factory.annotation.Required;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestOperations;
+
+import com.github.benmanes.caffeine.cache.Caffeine;
+import com.github.benmanes.caffeine.cache.LoadingCache;
 
 /**
  *
@@ -36,7 +38,7 @@ public class ZacTokenService extends AbstractZoneAwareTokenService implements In
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ZacTokenService.class);
 
-    private Map<String, FastTokenServices> tokenServicesMap;
+    private LoadingCache<String, FastTokenServices> tokenServicesCache;
 
     private RestOperations oauth2RestTemplate;
 
@@ -47,27 +49,22 @@ public class ZacTokenService extends AbstractZoneAwareTokenService implements In
 
     @Override
     protected FastTokenServices getOrCreateZoneTokenService(final String zoneId) {
-        FastTokenServices tokenServices;
-        tokenServices = this.tokenServicesMap.get(zoneId);
-        String trustedIssuersURL = this.zacUrl + "/v1/registration/" + getServiceId() + "/" + zoneId;
-        if (null == tokenServices) {
-            try {
-                final ResponseEntity<TrustedIssuers> responseEntity = this.oauth2RestTemplate
-                        .getForEntity(trustedIssuersURL, TrustedIssuers.class);
-                tokenServices = createFastTokenService(responseEntity.getBody().getTrustedIssuerIds());
-                this.tokenServicesMap.put(zoneId, tokenServices);
-            } catch (Exception e) {
-                LOGGER.error("Failed to get trusted issuers from: " + trustedIssuersURL);
-                LOGGER.error(e.getMessage());
-                throw e;
-            }
-
-        }
-        return tokenServices;
+        return this.tokenServicesCache.get(zoneId);
     }
 
-    public Map<String, FastTokenServices> getTokenServicesMap() {
-        return this.tokenServicesMap;
+    protected FastTokenServices createFastTokenService(final String zoneId) {
+        FastTokenServices tokenServices;
+        String trustedIssuersURL = this.zacUrl + "/v1/registration/" + getServiceId() + "/" + zoneId;
+        try {
+            final ResponseEntity<TrustedIssuers> responseEntity = this.oauth2RestTemplate
+                    .getForEntity(trustedIssuersURL, TrustedIssuers.class);
+            tokenServices = super.createFastTokenService(responseEntity.getBody().getTrustedIssuerIds());
+        } catch (Exception e) {
+            LOGGER.error("Failed to get trusted issuers from: " + trustedIssuersURL);
+            LOGGER.error(e.getMessage());
+            throw e;
+        }
+        return tokenServices;
     }
 
     public void setOauth2RestTemplate(final RestOperations oauth2RestTemplate) {
@@ -83,10 +80,6 @@ public class ZacTokenService extends AbstractZoneAwareTokenService implements In
         this.issuersTtlSeconds = issuersTtlSeconds;
     }
 
-    public void flushIssuerCache(final String zoneId) {
-        this.tokenServicesMap.remove(zoneId);
-    }
-
     private void checkIfZonePropertiesSet() {
         if (CollectionUtils.isEmpty(this.getServiceBaseDomainList())
                 && CollectionUtils.isEmpty(this.getServiceZoneHeadersList())) {
@@ -97,8 +90,9 @@ public class ZacTokenService extends AbstractZoneAwareTokenService implements In
 
     @Override
     public void afterPropertiesSet() throws Exception {
-        long timeToLiveMillis = this.issuersTtlSeconds * 1000;
-        this.tokenServicesMap = new PassiveExpiringMap<>(timeToLiveMillis);
+        LOGGER.info("TTL for token services cache is set to " + this.issuersTtlSeconds + " seconds.");
+        this.tokenServicesCache = Caffeine.newBuilder().expireAfterWrite(this.issuersTtlSeconds, TimeUnit.SECONDS)
+                .build(this::createFastTokenService);
         checkIfZonePropertiesSet();
     }
 }
