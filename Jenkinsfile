@@ -30,7 +30,7 @@ pipeline {
                     unset HTTP_PROXY
                     unset http_proxy
                     unset https_proxy
-                    mvn clean install
+                    mvn -B clean install
                 '''
                 dir('target') {
                     stash includes: '*.jar', name: 'uaa-token-lib-jar'
@@ -104,7 +104,7 @@ pipeline {
                             apk add --no-cache gnupg
                             gpg --version
                             ln -s ${WORKSPACE} /working-dir
-                            mvn clean deploy -B -P release -s spring-filters-config/mvn_settings_noproxy.xml \\
+                            mvn -B clean deploy -B -P release -s spring-filters-config/mvn_settings_noproxy.xml \\
                              -D gpg.homedir=/working-dir/spring-filters-config/gnupg -D stagingProfileId=$MAVEN_CENTRAL_STAGING_PROFILE_ID \\
                              -D skipTests -e
                         """
