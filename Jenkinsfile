@@ -18,7 +18,7 @@ pipeline {
         stage ('Build and Test') {
             agent {
                 docker {
-                    image 'maven:3.5'
+                    image 'maven:3.5-jdk-8-alpine'
                     label 'dind'
                     args '-v /root/.m2:/root/.m2'
                 }
