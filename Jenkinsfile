@@ -1,7 +1,7 @@
 #!groovy
 
-// Define DevCloud Artifactory for publishing non-docker image artifacts
-def devcloudArtServer = Artifactory.server('devcloud')
+// Define Artifactory for publishing non-docker image artifacts
+def buildGeArtServer = Artifactory.server('build.ge')
 def predixExternalArtServer = Artifactory.server('predix-external')
 library "security-ci-commons-shared-lib"
 def NODE = nodeDetails("java")
@@ -78,13 +78,13 @@ pipeline {
                             "files": [
                                     {
                                         "pattern": "uaa-token-lib-${APP_VERSION}.jar",
-                                        "target": "MAAXA-MVN/com/ge/predix/uaa-token-lib/${APP_VERSION}/"
+                                        "target": "MAAXA/com/ge/predix/uaa-token-lib/${APP_VERSION}/"
                                     }
                                 ]
                             }"""
 
-                        def buildInfo = devcloudArtServer.upload(uploadSpec)
-                        devcloudArtServer.publishBuildInfo(buildInfo)
+                        def buildInfo = buildGeArtServer.upload(uploadSpec)
+                        buildGeArtServer.publishBuildInfo(buildInfo)
 
                         uploadSpec = """{
                             "files": [
@@ -110,17 +110,17 @@ pipeline {
                         """
                     }
                     else {
-                        echo 'Branch is develop push to MAAXA-MVN-SNAPSHOT'
+                        echo 'Branch is develop push to MAAXA-SNAPSHOT'
                         def  uploadSpec = """{
                                 "files": [
                                     {
                                         "pattern": "uaa-token-lib-${APP_VERSION}.jar",
-                                        "target": "MAAXA-MVN-SNAPSHOT/com/ge/predix/uaa-token-lib/${APP_VERSION}/"
+                                        "target": "MAAXA-SNAPSHOT/com/ge/predix/uaa-token-lib/${APP_VERSION}/"
                                     }
                                 ]
                             }"""
-                        def buildInfo = devcloudArtServer.upload(uploadSpec)
-                        devcloudArtServer.publishBuildInfo(buildInfo)
+                        def buildInfo = buildGeArtServer.upload(uploadSpec)
+                        buildGeArtServer.publishBuildInfo(buildInfo)
                     }
                 }
 
