@@ -20,13 +20,12 @@ import java.io.IOException;
 
 import org.springframework.util.StringUtils;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 public final class JsonUtils {
-    private static ObjectMapper objectMapper = new ObjectMapper();
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     private JsonUtils() {
         //prevent instantiation
@@ -34,7 +33,7 @@ public final class JsonUtils {
 
     public static String writeValueAsString(final Object object) throws JsonUtilException {
         try {
-            return objectMapper.writeValueAsString(object);
+            return OBJECT_MAPPER.writeValueAsString(object);
         } catch (IOException e) {
             throw new JsonUtilException(e);
         }
@@ -42,7 +41,7 @@ public final class JsonUtils {
 
     public static byte[] writeValueAsBytes(final Object object) throws JsonUtilException {
         try {
-            return objectMapper.writeValueAsBytes(object);
+            return OBJECT_MAPPER.writeValueAsBytes(object);
         } catch (IOException e) {
             throw new JsonUtilException(e);
         }
@@ -51,7 +50,7 @@ public final class JsonUtils {
     public static <T> T readValue(final String s, final Class<T> clazz) throws JsonUtilException {
         try {
             if (StringUtils.hasText(s)) {
-                return objectMapper.readValue(s, clazz);
+                return OBJECT_MAPPER.readValue(s, clazz);
             } else {
                 return null;
             }
@@ -60,10 +59,10 @@ public final class JsonUtils {
         }
     }
 
-    public static <T> T readValue(final String s, final TypeReference<?> typeReference) {
+    public static <T> T readValue(final String s, final TypeReference<T> typeReference) {
         try {
             if (StringUtils.hasText(s)) {
-                return objectMapper.readValue(s, typeReference);
+                return OBJECT_MAPPER.readValue(s, typeReference);
             } else {
                 return null;
             }
@@ -77,7 +76,7 @@ public final class JsonUtils {
             if (object == null) {
                 return null;
             } else {
-                return objectMapper.convertValue(object, toClazz);
+                return OBJECT_MAPPER.convertValue(object, toClazz);
             }
         } catch (IllegalArgumentException e) {
             throw new JsonUtilException(e);
@@ -87,12 +86,10 @@ public final class JsonUtils {
     public static JsonNode readTree(final String s) {
         try {
             if (StringUtils.hasText(s)) {
-                return objectMapper.readTree(s);
+                return OBJECT_MAPPER.readTree(s);
             } else {
                 return null;
             }
-        } catch (JsonProcessingException e) {
-            throw new JsonUtilException(e);
         } catch (IOException e) {
             throw new JsonUtilException(e);
         }
