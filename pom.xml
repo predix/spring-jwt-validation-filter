@@ -46,8 +46,8 @@
     </scm>
     <properties>
         <spring-security-oauth2.version>2.5.0.RELEASE</spring-security-oauth2.version>
-        <commons-lang3.version>3.6</commons-lang3.version>
-        <commons-collections4.version>4.1</commons-collections4.version>
+        <commons-lang3.version>3.11</commons-lang3.version>
+        <commons-collections4.version>4.4</commons-collections4.version>
         <!-- Maven JAVA Version -->
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven-compiler-plugin.version>2.3.2</maven-compiler-plugin.version>
