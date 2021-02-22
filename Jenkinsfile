@@ -71,7 +71,7 @@ pipeline {
                     APP_VERSION = sh (returnStdout: true, script: '''
                         grep '<version>' pom.xml -m 1 | sed 's/<version>//' | sed 's/<\\/version>//g'
                         ''').trim()
-                    echo "Uploading UAA ${APP_VERSION} build to Artifactory"
+                    echo "Uploading uaa-token-lib ${APP_VERSION} build to Artifactory"
                     if (env.BRANCH_NAME == 'master') {
                         echo 'Branch is master push to MAAXA-MVN, PREDIX-EXT, and maven central'
                         def uploadSpec = """{
