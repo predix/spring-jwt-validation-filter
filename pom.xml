@@ -56,6 +56,7 @@
         <maven-bundle-plugin.version>2.3.7</maven-bundle-plugin.version>
         <jackson.version>2.12.1</jackson.version>
         <spring-security-jwt.version>1.1.1.RELEASE</spring-security-jwt.version>
+        <spring-core.version>5.3.4</spring-core.version>
         <!-- Test Dependency Version -->
         <mockito.version>1.10.19</mockito.version>
         <testng.version>7.3.0</testng.version>
@@ -91,8 +92,13 @@
         </dependency>
         <dependency>
             <groupId>org.springframework</groupId>
-            <artifactId>spring-beans</artifactId>
-            <version>5.3.4</version>
+            <artifactId>spring-core</artifactId>
+            <version>${spring-core.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-webmvc</artifactId>
+            <version>${spring-core.version}</version>
         </dependency>
         <dependency>
             <groupId>javax.servlet</groupId>
@@ -125,7 +131,7 @@
         <dependency>
             <groupId>org.bouncycastle</groupId>
             <artifactId>bcprov-jdk15on</artifactId>
-            <version>1.52</version>
+            <version>1.68</version>
         </dependency>
         <dependency>
             <groupId>org.slf4j</groupId>
@@ -140,7 +146,7 @@
         <dependency>
             <groupId>org.springframework</groupId>
             <artifactId>spring-test</artifactId>
-            <version>5.3.4</version>
+            <version>${spring-core.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
