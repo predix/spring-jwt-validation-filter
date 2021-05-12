@@ -46,7 +46,7 @@
     </scm>
     <properties>
         <spring-security-oauth2.version>2.5.0.RELEASE</spring-security-oauth2.version>
-        <spring-security.version>4.2.20.RELEASE</spring-security.version>
+        <spring-security.version>5.2.10.RELEASE</spring-security.version>
         <commons-lang3.version>3.11</commons-lang3.version>
         <commons-collections4.version>4.4</commons-collections4.version>
         <!-- Maven JAVA Version -->
