@@ -1,7 +1,7 @@
 #!groovy
 
-// Define DevCloud Artifactory for publishing non-docker image artifacts
-def devcloudArtServer = Artifactory.server('devcloud')
+// Define Artifactory for publishing non-docker image artifacts
+def buildGeArtServer = Artifactory.server('build.ge')
 def predixExternalArtServer = Artifactory.server('predix-external')
 library "security-ci-commons-shared-lib"
 def NODE = nodeDetails("java")
@@ -18,7 +18,7 @@ pipeline {
         stage ('Build and Test') {
             agent {
                 docker {
-                    image 'maven:3.5'
+                    image 'maven:3.5-jdk-8-alpine'
                     label 'dind'
                     args '-v /root/.m2:/root/.m2'
                 }
@@ -71,20 +71,20 @@ pipeline {
                     APP_VERSION = sh (returnStdout: true, script: '''
                         grep '<version>' pom.xml -m 1 | sed 's/<version>//' | sed 's/<\\/version>//g'
                         ''').trim()
-                    echo "Uploading UAA ${APP_VERSION} build to Artifactory"
+                    echo "Uploading uaa-token-lib ${APP_VERSION} build to Artifactory"
                     if (env.BRANCH_NAME == 'master') {
                         echo 'Branch is master push to MAAXA-MVN, PREDIX-EXT, and maven central'
                         def uploadSpec = """{
                             "files": [
                                     {
                                         "pattern": "uaa-token-lib-${APP_VERSION}.jar",
-                                        "target": "MAAXA-MVN/com/ge/predix/uaa-token-lib/${APP_VERSION}/"
+                                        "target": "MAAXA/com/ge/predix/uaa-token-lib/${APP_VERSION}/"
                                     }
                                 ]
                             }"""
 
-                        def buildInfo = devcloudArtServer.upload(uploadSpec)
-                        devcloudArtServer.publishBuildInfo(buildInfo)
+                        def buildInfo = buildGeArtServer.upload(uploadSpec)
+                        buildGeArtServer.publishBuildInfo(buildInfo)
 
                         uploadSpec = """{
                             "files": [
@@ -110,17 +110,17 @@ pipeline {
                         """
                     }
                     else {
-                        echo 'Branch is develop push to MAAXA-MVN-SNAPSHOT'
+                        echo 'Branch is develop push to MAAXA-SNAPSHOT'
                         def  uploadSpec = """{
                                 "files": [
                                     {
                                         "pattern": "uaa-token-lib-${APP_VERSION}.jar",
-                                        "target": "MAAXA-MVN-SNAPSHOT/com/ge/predix/uaa-token-lib/${APP_VERSION}/"
+                                        "target": "MAAXA-SNAPSHOT/com/ge/predix/uaa-token-lib/${APP_VERSION}/"
                                     }
                                 ]
                             }"""
-                        def buildInfo = devcloudArtServer.upload(uploadSpec)
-                        devcloudArtServer.publishBuildInfo(buildInfo)
+                        def buildInfo = buildGeArtServer.upload(uploadSpec)
+                        buildGeArtServer.publishBuildInfo(buildInfo)
                     }
                 }
 

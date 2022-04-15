@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2017 General Electric Company
+ * Copyright 2021 General Electric Company
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,7 +35,6 @@ import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.util.UriUtils;
 
 import javax.servlet.http.HttpServletRequest;
-import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
@@ -166,8 +165,6 @@ public abstract class AbstractZoneAwareTokenService implements ResourceServerTok
             // Normalize URI to resolve relative paths:
             // For example, "/v1/hello/../policy-set/my%20policy" --> "/v1/policy-set/my%20policy"
             normalizedUri = new URI(encodedUri).normalize().toString();
-        } catch (UnsupportedEncodingException e) {
-            throw new InvalidRequestException("Unable to normalize request URL: " + requestUri, e);
         } catch (URISyntaxException e) {
             throw new InvalidRequestException("Unable to normalize request URL: " + requestUri, e);
         }
