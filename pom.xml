@@ -57,7 +57,7 @@
         <maven-bundle-plugin.version>2.3.7</maven-bundle-plugin.version>
         <jackson.version>2.12.1</jackson.version>
         <spring-security-jwt.version>1.1.1.RELEASE</spring-security-jwt.version>
-        <spring-core.version>5.3.4</spring-core.version>
+        <spring-core.version>5.3.19</spring-core.version>
         <!-- Test Dependency Version -->
         <mockito.version>1.10.19</mockito.version>
         <testng.version>7.3.0</testng.version>
