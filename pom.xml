@@ -55,7 +55,7 @@
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
         <maven-bundle-plugin.version>2.3.7</maven-bundle-plugin.version>
-        <jackson.version>2.12.1</jackson.version>
+        <jackson.version>2.12.7.1</jackson.version>
         <spring-security-jwt.version>1.1.1.RELEASE</spring-security-jwt.version>
         <spring-core.version>5.3.4</spring-core.version>
         <!-- Test Dependency Version -->
