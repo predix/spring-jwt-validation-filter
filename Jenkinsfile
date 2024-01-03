@@ -1,8 +1,8 @@
 #!groovy
 
 // Define Artifactory for publishing non-docker image artifacts
-def buildGeArtServer = Artifactory.server('build.ge')
-def predixExternalArtServer = Artifactory.server('predix-external')
+def digitalGridArtServer = Artifactory.server('Digital-Artifactory')
+def ARTIFACTORY_SERVER_URL = digitalGridArtServer.getUrl()
 library "security-ci-commons-shared-lib"
 def NODE = nodeDetails("java")
 
@@ -57,9 +57,11 @@ pipeline {
                 }
             }
             when {
+                beforeAgent true
                 expression { env.BRANCH_NAME == 'master' || env.BRANCH_NAME == 'develop' }
             }
             environment {
+                DEPLOY_CREDS = credentials('DIGITAL_GRID_ARTIFACTORY_CREDENTIALS')
                 MAVEN_CENTRAL_STAGING_PROFILE_ID=credentials('MAVEN_CENTRAL_STAGING_PROFILE_ID')
             }
             steps {
@@ -73,54 +75,46 @@ pipeline {
                         ''').trim()
                     echo "Uploading uaa-token-lib ${APP_VERSION} build to Artifactory"
                     if (env.BRANCH_NAME == 'master') {
-                        echo 'Branch is master push to MAAXA-MVN, PREDIX-EXT, and maven central'
-                        def uploadSpec = """{
-                            "files": [
-                                    {
-                                        "pattern": "uaa-token-lib-${APP_VERSION}.jar",
-                                        "target": "MAAXA/com/ge/predix/uaa-token-lib/${APP_VERSION}/"
-                                    }
-                                ]
-                            }"""
-
-                        def buildInfo = buildGeArtServer.upload(uploadSpec)
-                        buildGeArtServer.publishBuildInfo(buildInfo)
-
-                        uploadSpec = """{
-                            "files": [
-                                    {
-                                        "pattern": "uaa-token-lib-${APP_VERSION}.jar",
-                                        "target": "PREDIX-EXT/com/ge/predix/uaa-token-lib/${APP_VERSION}/"
-                                    }
-                                ]
-                            }"""
-                        buildInfo = predixExternalArtServer.upload(uploadSpec)
-                        predixExternalArtServer.publishBuildInfo(buildInfo)
+                        ARTIFACTORY_REPO = 'pgog-fss-iam-uaa-mvn'
+                        echo "Branch is master push to ${ARTIFACTORY_REPO}, and maven central"
 
                         sh """#!/usr/bin/env bash
                             set -ex
-                            #Deploy/Release to maven central repository
                             apk update
                             apk add --no-cache gnupg
                             gpg --version
                             ln -s ${WORKSPACE} /working-dir
+
+                            #Deploy/Release to digital grid repository
+                            mvn clean deploy -B -s spring-filters-config/mvn_settings_noproxy.xml \\
+                            -DaltDeploymentRepository=artifactory.uaa.releases::default::${ARTIFACTORY_SERVER_URL}/${ARTIFACTORY_REPO} \\
+                            -Dartifactory.user=${DEPLOY_CREDS_USR} \\
+                            -Dartifactory.password=${DEPLOY_CREDS_PSW} \\
+                            -DskipTests -e
+
+                            #Deploy/Release to maven central repository
                             mvn -B clean deploy -B -P release -s spring-filters-config/mvn_settings_noproxy.xml \\
                              -D gpg.homedir=/working-dir/spring-filters-config/gnupg -D stagingProfileId=$MAVEN_CENTRAL_STAGING_PROFILE_ID \\
                              -D skipTests -e
                         """
                     }
                     else {
-                        echo 'Branch is develop push to MAAXA-SNAPSHOT'
-                        def  uploadSpec = """{
-                                "files": [
-                                    {
-                                        "pattern": "uaa-token-lib-${APP_VERSION}.jar",
-                                        "target": "MAAXA-SNAPSHOT/com/ge/predix/uaa-token-lib/${APP_VERSION}/"
-                                    }
-                                ]
-                            }"""
-                        def buildInfo = buildGeArtServer.upload(uploadSpec)
-                        buildGeArtServer.publishBuildInfo(buildInfo)
+                        ARTIFACTORY_REPO = 'pgog-fss-iam-uaa-mvn-snapshot'
+                        echo "Branch is develop push to ${ARTIFACTORY_REPO}"
+
+                        sh """#!/usr/bin/env bash
+                            set -ex
+                            apk update
+                            apk add --no-cache gnupg
+                            gpg --version
+                            ln -s ${WORKSPACE} /working-dir
+                    
+                            mvn clean deploy -B -s spring-filters-config/mvn_settings_noproxy.xml \\
+                            -DaltDeploymentRepository=artifactory.uaa.snapshots::default::${ARTIFACTORY_SERVER_URL}/${ARTIFACTORY_REPO} \\
+                            -Dartifactory.user=${DEPLOY_CREDS_USR} \\
+                            -Dartifactory.password=${DEPLOY_CREDS_PSW} \\
+                            -DskipTests -e
+                        """
                     }
                 }
 
