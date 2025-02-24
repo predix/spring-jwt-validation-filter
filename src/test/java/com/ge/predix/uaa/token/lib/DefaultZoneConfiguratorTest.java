@@ -30,91 +30,87 @@ public class DefaultZoneConfiguratorTest {
 
     @Test(dataProvider = "validAllowedPatterns")
     public void testValidAllowedPatterns(final List<String> allowedUriPatterns) {
-        DefaultZoneConfiguration configurator = new DefaultZoneConfiguration();
-        configurator.setAllowedUriPatterns(allowedUriPatterns);
-
+        DefaultZoneConfiguration configurator = new DefaultZoneConfiguration(allowedUriPatterns);
         Assert.assertEquals(configurator.getAllowedUriPatterns(), allowedUriPatterns);
     }
 
     @Test(dataProvider = "invalidAllowedPatterns", expectedExceptions = IllegalArgumentException.class)
     public void testInvalidAllowedPatterns(final List<String> allowedUriPatterns) {
-        DefaultZoneConfiguration configurator = new DefaultZoneConfiguration();
-        configurator.setAllowedUriPatterns(allowedUriPatterns);
+        DefaultZoneConfiguration configurator = new DefaultZoneConfiguration(allowedUriPatterns);
     }
 
     public void testSetTrustedIssuerId() {
         String expectedIssuer = "http://uaa.predix.com";
-        DefaultZoneConfiguration configurator = new DefaultZoneConfiguration();
+        DefaultZoneConfiguration configurator = new DefaultZoneConfiguration(List.of());
         configurator.setTrustedIssuerId(expectedIssuer);
 
         Assert.assertEquals(configurator.getTrustedIssuerId(), expectedIssuer);
         Assert.assertEquals(configurator.getTrustedIssuerIds().size(), 1);
-        Assert.assertEquals(configurator.getTrustedIssuerIds().iterator().next(), expectedIssuer);
+        Assert.assertEquals(configurator.getTrustedIssuerIds().getFirst(), expectedIssuer);
     }
 
     public void testSetTrustedIssuerIdNull() {
-        DefaultZoneConfiguration configurator = new DefaultZoneConfiguration();
+        DefaultZoneConfiguration configurator = new DefaultZoneConfiguration(List.of());
         configurator.setTrustedIssuerId(null);
 
-        Assert.assertEquals(configurator.getTrustedIssuerId(), null);
+        Assert.assertNull(configurator.getTrustedIssuerId());
         Assert.assertEquals(configurator.getTrustedIssuerIds().size(), 0);
     }
 
     public void testSetTrustedIssuerIdNullResetsIssuerIds() {
         List<String> expectedIssuers = Arrays.asList("http://uaa.predix.com", "http://zac-uaa.predix.com");
-        DefaultZoneConfiguration configurator = new DefaultZoneConfiguration();
+        DefaultZoneConfiguration configurator = new DefaultZoneConfiguration(List.of());
         configurator.setTrustedIssuerIds(expectedIssuers);
         Assert.assertEquals(configurator.getTrustedIssuerIds(), expectedIssuers);
         
         //reset
         configurator.setTrustedIssuerId(null);
 
-        Assert.assertEquals(configurator.getTrustedIssuerId(), null);
+        Assert.assertNull(configurator.getTrustedIssuerId());
         Assert.assertEquals(configurator.getTrustedIssuerIds().size(), 0);
     }
     
     public void testMultipleTrustedIssuers() {
         List<String> expectedIssuers = Arrays.asList("http://uaa.predix.com", "http://zac-uaa.predix.com");
-        DefaultZoneConfiguration configurator = new DefaultZoneConfiguration();
+        DefaultZoneConfiguration configurator = new DefaultZoneConfiguration(List.of());
         configurator.setTrustedIssuerIds(expectedIssuers);
 
         Assert.assertEquals(configurator.getTrustedIssuerIds(), expectedIssuers);
-        Assert.assertEquals(configurator.getTrustedIssuerId(), expectedIssuers.get(0));
+        Assert.assertEquals(configurator.getTrustedIssuerId(), expectedIssuers.getFirst());
     }
 
     public void testSetTrustedIssuerIdsNull() {
-        DefaultZoneConfiguration configurator = new DefaultZoneConfiguration();
+        DefaultZoneConfiguration configurator = new DefaultZoneConfiguration(List.of());
         configurator.setTrustedIssuerIds(null);
 
         Assert.assertEquals(configurator.getTrustedIssuerIds(), Collections.emptyList());
-        Assert.assertEquals(configurator.getTrustedIssuerId(), null);
+        Assert.assertNull(configurator.getTrustedIssuerId());
     }
 
     public void testSetTrustedIssuerIdsEmpty() {
-        DefaultZoneConfiguration configurator = new DefaultZoneConfiguration();
-        configurator.setTrustedIssuerIds(new ArrayList<String>());
+        DefaultZoneConfiguration configurator = new DefaultZoneConfiguration(List.of());
 
         Assert.assertEquals(configurator.getTrustedIssuerIds(), Collections.emptyList());
-        Assert.assertEquals(configurator.getTrustedIssuerId(), null);
+        Assert.assertNull(configurator.getTrustedIssuerId());
     }
 
     public void testSetTrustedIssuerIdsNotInitialized() {
-        DefaultZoneConfiguration configurator = new DefaultZoneConfiguration();
+        DefaultZoneConfiguration configurator = new DefaultZoneConfiguration(List.of());
 
         Assert.assertEquals(configurator.getTrustedIssuerIds(), Collections.emptyList());
-        Assert.assertEquals(configurator.getTrustedIssuerId(), null);
+        Assert.assertNull(configurator.getTrustedIssuerId());
     }
 
     @DataProvider
     private Object[][] validAllowedPatterns() {
 
-        return new Object[][] { { new ArrayList<String>() }, { Arrays.asList("/zone/**") },
-                { Arrays.asList("/zone/?") }, };
+        return new Object[][] { { new ArrayList<String>() }, { List.of("/zone/**") },
+                                { List.of("/zone/?") }, };
     }
 
     @DataProvider
     private Object[][] invalidAllowedPatterns() {
 
-        return new Object[][] { { Arrays.asList("/zone") }, { Arrays.asList("abc") }, };
+        return new Object[][] { { List.of("/zone") }, { List.of("abc") }, };
     }
 }

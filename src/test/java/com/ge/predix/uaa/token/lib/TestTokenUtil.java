@@ -16,12 +16,8 @@
 
 package com.ge.predix.uaa.token.lib;
 
-import static com.ge.predix.uaa.token.lib.Claims.ADDITIONAL_AZ_ATTR;
-import static com.ge.predix.uaa.token.lib.Claims.AUD;
 import static com.ge.predix.uaa.token.lib.Claims.AUTHORITIES;
-import static com.ge.predix.uaa.token.lib.Claims.AZP;
 import static com.ge.predix.uaa.token.lib.Claims.CID;
-import static com.ge.predix.uaa.token.lib.Claims.CLIENT_ID;
 import static com.ge.predix.uaa.token.lib.Claims.EMAIL;
 import static com.ge.predix.uaa.token.lib.Claims.GRANT_TYPE;
 import static com.ge.predix.uaa.token.lib.Claims.REVOCATION_SIGNATURE;
@@ -30,9 +26,10 @@ import static com.ge.predix.uaa.token.lib.Claims.USER_ID;
 import static com.ge.predix.uaa.token.lib.Claims.USER_NAME;
 import static com.ge.predix.uaa.token.lib.Claims.ZONE_ID;
 
-import java.security.KeyPair;
-import java.security.KeyPairGenerator;
+import java.security.KeyFactory;
+import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
+import java.security.spec.InvalidKeySpecException;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -40,215 +37,160 @@ import java.util.Arrays;
 import java.util.Base64;
 import java.util.Collection;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import com.nimbusds.jose.JOSEException;
+import com.nimbusds.jose.JWSAlgorithm;
+import com.nimbusds.jose.JWSHeader;
 import com.nimbusds.jose.crypto.RSASSASigner;
-import com.nimbusds.jose.shaded.gson.Gson;
-import com.okta.jwt.JwtVerifiers;
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.Jwts.SIG;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
+import com.nimbusds.jwt.JWTClaimsSet;
+import com.nimbusds.jwt.SignedJWT;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.server.resource.authentication.BearerTokenAuthenticationToken;
 
-import java.security.KeyFactory;
-import java.security.NoSuchAlgorithmException;
-import java.security.spec.InvalidKeySpecException;
-
 public class TestTokenUtil {
 
-    private static final String TOKEN_ISSUER_ID = "http://localhost:8080/uaa/oauth/token";
-
-    private static final String TOKEN_VERIFYING_KEY = "-----BEGIN PUBLIC KEY-----\n"
-            + "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA0m59l2u9iDnMbrXHfqkO\n"
-            + "rn2dVQ3vfBJqcDuFUK03d+1PZGbVlNCqnkpIJ8syFppW8ljnWweP7+LiWpRoz0I7\n"
-            + "fYb3d8TjhV86Y997Fl4DBrxgM6KTJOuE/uxnoDhZQ14LgOU2ckXjOzOdTsnGMKQB\n"
-            + "LCl0vpcXBtFLMaSbpv1ozi8h7DJyVZ6EnFQZUWGdgTMhDrmqevfx95U/16c5WBDO\n"
-            + "kqwIn7Glry9n9Suxygbf8g5AzpWcusZgDLIIZ7JTUldBb8qU2a0Dl4mvLZOn4wPo\n"
-            + "jfj9Cw2QICsc5+Pwf21fP+hzf+1WSRHbnYv8uanRO0gZ8ekGaghM/2H6gqJbo2nI\n" + "JwIDAQAB\n"
-            + "-----END PUBLIC KEY-----\n";
+    public static final String TOKEN_ISSUER_ID = "http://trusted.issuer/oauth/token";
 
     private static final String TOKEN_SIGNING_KEY = """
-        -----BEGIN RSA PRIVATE KEY-----
-        MIIEowIBAAKCAQEA0m59l2u9iDnMbrXHfqkOrn2dVQ3vfBJqcDuFUK03d+1PZGbV
-        lNCqnkpIJ8syFppW8ljnWweP7+LiWpRoz0I7fYb3d8TjhV86Y997Fl4DBrxgM6KT
-        JOuE/uxnoDhZQ14LgOU2ckXjOzOdTsnGMKQBLCl0vpcXBtFLMaSbpv1ozi8h7DJy
-        VZ6EnFQZUWGdgTMhDrmqevfx95U/16c5WBDOkqwIn7Glry9n9Suxygbf8g5AzpWc
-        usZgDLIIZ7JTUldBb8qU2a0Dl4mvLZOn4wPojfj9Cw2QICsc5+Pwf21fP+hzf+1W
-        SRHbnYv8uanRO0gZ8ekGaghM/2H6gqJbo2nIJwIDAQABAoIBAHPV9rSfzllq16op
-        zoNetIJBC5aCcU4vJQBbA2wBrgMKUyXFpdSheQphgY7GP/BJTYtifRiS9RzsHAYY
-        pAlTQEQ9Q4RekZAdd5r6rlsFrUzL7Xj/CVjNfQyHPhPocNqwrkxp4KrO5eL06qcw
-        UzT7UtnoiCdSLI7IL0hIgJZP8J1uPNdXH+kkDEHE9xzU1q0vsi8nBLlim+ioYfEa
-        Q/Q/ovMNviLKVs+ZUz+wayglDbCzsevuU+dh3Gmfc98DJw6n6iClpd4fDPqvhxUO
-        BDeQT1mFeHxexDse/kH9nygxT6E4wlU1sw0TQANcT6sHReyHT1TlwnWlCQzoR3l2
-        RmkzUsECgYEA8W/VIkfyYdUd5ri+yJ3iLdYF2tDvkiuzVmJeA5AK2KO1fNc7cSPK
-        /sShHruc0WWZKWiR8Tp3d1XwA2rHMFHwC78RsTds+NpROs3Ya5sWd5mvmpEBbL+z
-        cl3AU9NLHVvsZjogmgI9HIMTTl4ld7GDsFMt0qlCDztqG6W/iguQCx8CgYEA3x/j
-        UkP45/PaFWd5c1DkWvmfmi9UxrIM7KeyBtDExGIkffwBMWFMCWm9DODw14bpnqAA
-        jH5AhQCzVYaXIdp12b+1+eOOckYHwzjWOFpJ3nLgNK3wi067jVp0N0UfgV5nfYw/
-        +YoHfYRCGsM91fowh7wLcyPPwmSAbQAKwbOZKfkCgYEAnccDdZ+m2iA3pitdIiVr
-        RaDzuoeHx/IfBHjMD2/2ZpS1aZwOEGXfppZA5KCeXokSimj31rjqkWXrr4/8E6u4
-        PzTiDvm1kPq60r7qi4eSKx6YD15rm/G7ByYVJbKTB+CmoDekToDgBt3xo+kKeyna
-        cUQqUdyieunM8bxja4ca3ukCgYAfrDAhomJ30qa3eRvFYcs4msysH2HiXq30/g0I
-        aKQ12FSjyZ0FvHEFuQvMAzZM8erByKarStSvzJyoXFWhyZgHE+6qDUJQOF6ruKq4
-        DyEDQb1P3Q0TSVbYRunOWrKRM6xvJvSB4LUVfSvBDsv9TumKqwfZDVFVn9yXHHVq
-        b6sjSQKBgDkcyYkAjpOHoG3XKMw06OE4OKpP9N6qU8uZOuA8ZF9ZyR7vFf4bCsKv
-        QH+xY/4h8tgL+eASz5QWhj8DItm8wYGI5lKJr8f36jk0JLPUXODyDAeN6ekXY9LI
-        fudkijw0dnh28LJqbkFF5wLNtATzyCfzjp+czrPMn9uqLNKt/iVD
-        -----END RSA PRIVATE KEY-----
-        """;
+        -----BEGIN PRIVATE KEY-----
+        MIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQDdTg6/Eb/+0iFD
+        hNS2elmVYSPEonJ56HQBD3jKCLaRIVMIjF6ppbzDCBgfhYCdaFSGQ2EPAVbZPEzN
+        pJrC5O/CxNdx/utMbqVuhcJAG7w2d2n8ic5snyO9mt5iWKXSMdW0IRgYPadgbeJH
+        fMvJhxRmf2WJS4QEo9d4BJKY+soQXJW4phvSdncnKGEqdn9FGv7q13c1Yv6tnR0L
+        W12nkKABWLqdLum1M5W0c/H8kN8mu+5p8tM4rUVYP6q6zLJrysuby1ExVVsx72Dr
+        ZK0+2FAh6zF/ueslRBVcMNcBgxwfQ+9lt//+I1Gihwv2hHZVbx+6n52MHIKP2Ozd
+        KmX8jymfAgMBAAECggEAAK4LYDg5vW//0ilHo1ffi+nvJjIpj95QR5XjP8ZPE/Bk
+        75Me0f6Zry+zLfBHDjS9Lbxp6+s2d8G2VVtlblEtu2Icwf46fX2e3HwPYLW1GlBm
+        REmtbKqrKBtLBkT8yBcxxN/lJw3pbw5nXOOGl2k8KCR0DLvtUpD+ScwZzIaDYGbR
+        nPg3wx6AE/hsU69rYX5OymaiWAHwGpgtPb/Rnt86+85sOQhE27qouVh3v32cmYPs
+        OuygJisrTOite3wp50ZB5FOqVt/oMiMt+jgCmUAxnnEfjrFB644gNIBiCmfl20Ac
+        22/mBO+2+j8M+mFILTAC024cdV6WWi2JZzWdhMu74QKBgQD/LT7TAAJqIzjpDpBk
+        TPwJhSsUR48GydCAPKUZr8kw0QKmfhM/eCw2j/Tmg0xYguF7UUfPq4CXR6kP8Bm+
+        UyZLsMesCHKOLA9ltQwFwXY7wzsp88LKksj4nt2NuuOZMifRSjhc/2eH0bHv4mjb
+        pIeg8Z4CQN2J75JMysdtmySBvQKBgQDeBNY/fjLz1YX6g6N6cbxELZwuZ4k7BwuM
+        y6sy+8h3MfBR2PkMkmkgaH2ngAP8uuyTFDBuMn3ihZimc9Z8cJjYLotGYV4MiuhP
+        5dUSY8rvHHjuWcN8yKyVKRS3UbibvobJ6V9EsDy+2Gz7vilOpn5dlqYy13qpqpbX
+        EfB0d48YiwKBgFKBiJykliNHPDFuuhUUJzHU0vb9pCsnubic4y0I/14/VkIK5aJR
+        8sm5hg+6SEceGlXLFBL7etpvGyTCFzDIpcs3X3gqSw/ZAyl5fmemA9qS52BLJqJl
+        D4IDq9MVqF1yMBmli8/V7N2nWYcch5bs/cV2GgbUfk0JHx6hOhYgYY9pAoGAXBq9
+        lxGPqcBHGKpLw5wzckVJqaaiM660h/BmUXxKqcg53nqYtzJ2Ek/G8RoWjV4ujsWt
+        Ycnol3S84zDjJjS/8887UDNMhP+LaLn8LujfY1r4gEkU5EuL7UVhprtsTpA38sOy
+        FhjW2oWGkNlO4aYIfmLlB+qEpKZ0dTyn+GkxIAkCgYA/O9YRY2Le7r2yt7hljGdJ
+        YUXOzOzmMrrZ+ev7iiXIhtXc7Y38XN5ss6bdnBJENaElyrNMsmi9SKP45lTHfHob
+        F9sB4DYtyQi3mmQcSQHTF91iYR0NSH9jqXsCwrK6BgFQDWihdbgU1WAdFR9lfLre
+        q6wo7xaqJqwX7dezdhynlA==
+        -----END PRIVATE KEY-----""";
 
-    private static final String UPDATED_TOKEN_VERIFYING_KEY = """
-        -----BEGIN PUBLIC KEY-----
-        MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA1qEFBIQNuVVrF9UOy9AP
-        7tfdCL19TmjKw16gXHfmSEJMcEzkmM4/wZwStgtX8KFyhnzu3ZjQ9Mbd58Ddht+K
-        1Zz32UN1V/vXT7TwocWWPUUNXbEn3Tm6h7MCxbDyoGeXMQdFNq/w3bdHm/L0SOJC
-        UjLnOMb0n1PTtq9hNNIT2RTLze/DKabdKaq+oqTKGl1tqDZ8OKQs6PrgChcehuWB
-        j+ZXaIaQmLeRWboyS1/H7u7iN3vPpGMqt+/PK1jC87NPtTlq8EHMW8MyOmTUsuWE
-        wWMr1bNcmI/snxpbwO9CeE3PwbT1CzA+Ky0zGa++bBcaT3tPMoOef3XS1YCRXzME
-        KQIDAQAB
-        -----END PUBLIC KEY-----""";
-
-    private static final String UPDATED_TOKEN_SIGNING_KEY = """
-        -----BEGIN RSA PRIVATE KEY-----
-        MIIEpAIBAAKCAQEA1qEFBIQNuVVrF9UOy9AP7tfdCL19TmjKw16gXHfmSEJMcEzk
-        mM4/wZwStgtX8KFyhnzu3ZjQ9Mbd58Ddht+K1Zz32UN1V/vXT7TwocWWPUUNXbEn
-        3Tm6h7MCxbDyoGeXMQdFNq/w3bdHm/L0SOJCUjLnOMb0n1PTtq9hNNIT2RTLze/D
-        KabdKaq+oqTKGl1tqDZ8OKQs6PrgChcehuWBj+ZXaIaQmLeRWboyS1/H7u7iN3vP
-        pGMqt+/PK1jC87NPtTlq8EHMW8MyOmTUsuWEwWMr1bNcmI/snxpbwO9CeE3PwbT1
-        CzA+Ky0zGa++bBcaT3tPMoOef3XS1YCRXzMEKQIDAQABAoIBAQCJCutfRMpWinoF
-        D5+Q99sUkHSr/gIirLq7IJKYOF6ryNlx40cbYqZHA1bXMksGdK/hu6fxin/xq4FJ
-        V1abpeTKHJ4M9gvZEA8c79WuFbGmkY7FQjbIBPJbbyvX+vIRBdP+FDxXfOP5TevF
-        Yc4lM4NRZPtKv462pRnLzhPtXC4cLwXF1SwkTqU5xbU4T+TWf+CdJPaGW/dI3Lon
-        cW6Sor9X80OkATWvZYS/38Hp7eV1962wkfCBz1MPwWBjS/bXJOAWn42kAGRdcL20
-        K4P8hTVWNp4ZolO6dNGELtnDM5+0g+LDVNIMWPwqQlSWAvhqx39dCL8RV8jP2FGp
-        PPyiWZ/ZAoGBAO7bC+T1D/gDIgAIOM9WQhdF4wMfRFmc7JFOdC2BVJeQ+2RvL8s2
-        0KkSeUGN0pYSQI7SNyvrBv8aR2zIkwX5aY/Ck1AVZR+QzZE1QQ9d8kgle5UtQu/9
-        /xok+qVGvNcFLo9Nr0sheu04CGYxkkqmvWgxUdZw3LAjX7ZXRSeUWzULAoGBAOYI
-        z1+7Xn45a3i2/ynk58VaNFLqsYj/wZkWCKEZn7st2UvIVMpxs+KUk/I8LR1IdIDv
-        GfsGVWYeXu9IrBq0sfmg2HbE/0x6LM2pSBWYbtbKQJxlEZqwgzd2HuSzvlZncJjC
-        rGYDCpTGXyIiz4jzqWI3wfXJ8UKEQqODROJZ6MQbAoGAUtHY+faPJuvPKjuvlxTN
-        rcwpvrdkt73VuTx+xBiIAFXhFR4IcGn9R+KD8NsAHdEOWXdCchP4RRQTmACkGfo1
-        RAevlKEWgy9uV98jQ/TLQYDdrQgYoaZsgeA4mH5ClDvTvRSup1pgiUhYgTbHBuNx
-        4WLYgYZ4vwpE8bCo5eRnC6kCgYEAgWKnMZN0HM8zMdzMPMYxzwFjuNelMAea3v5T
-        sDl3bJLnTAbMGmpF4cXsSS2runLMhND37ger9RpUD4bytrq3+E6OMo+vgVae6La0
-        guEQRuPP36fBdR6fT4yy57Rp9LON03579Yz0YKYLUGoADWnv9fyirhr+BonZ6Zqm
-        HiKwF80CgYAjRguz6TpKViQKOUHUc5oKXRouysw4/0Tbxv15lLIWMVjbVX2xz13g
-        mHRwYixWdiLolgw/kwuzZ4wcZpIyn4TRK66UyTSG7LnY2Eh9xs6ZHLLHxDUNgHk6
-        Ob9JCpapUTY7oTo7oOIU9flKRMmg+UOR4ZwZZ1KLjqDhX/4rcmYOtQ==
-        -----END RSA PRIVATE KEY-----""";
-
-    public static final KeyPair keyPair = loadKeyPair();
-
-    RSASSASigner signer = new RSASSASigner(keyPair.getPrivate());
+    public static final String TOKEN_KEY_RESPONSE = """
+        {
+        \t"kty": "RSA",
+        \t"e": "AQAB",
+        \t"use": "sig",
+        \t"kid": "PNna8",
+        \t"alg": "RS256",
+        \t"value": "-----BEGIN PUBLIC KEY-----MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA3U4OvxG//tIhQ4TUtnpZlWEjxKJyeeh0AQ94ygi2kSFTCIxeqaW8wwgYH4WAnWhUhkNhDwFW2TxMzaSawuTvwsTXcf7rTG6lboXCQBu8Nndp/InObJ8jvZreYlil0jHVtCEYGD2nYG3iR3zLyYcUZn9liUuEBKPXeASSmPrKEFyVuKYb0nZ3JyhhKnZ/RRr+6td3NWL+rZ0dC1tdp5CgAVi6nS7ptTOVtHPx/JDfJrvuafLTOK1FWD+qusyya8rLm8tRMVVbMe9g62StPthQIesxf7nrJUQVXDDXAYMcH0PvZbf//iNRoocL9oR2VW8fup+djByCj9js3Spl/I8pnwIDAQAB-----END PUBLIC KEY-----",
+        \t"n": "AN1ODr8Rv_7SIUOE1LZ6WZVhI8SicnnodAEPeMoItpEhUwiMXqmlvMMIGB-FgJ1oVIZDYQ8BVtk8TM2kmsLk78LE13H-60xupW6FwkAbvDZ3afyJzmyfI72a3mJYpdIx1bQhGBg9p2Bt4kd8y8mHFGZ_ZYlLhASj13gEkpj6yhBclbimG9J2dycoYSp2f0Ua_urXdzVi_q2dHQtbXaeQoAFYup0u6bUzlbRz8fyQ3ya77mny0zitRVg_qrrMsmvKy5vLUTFVWzHvYOtkrT7YUCHrMX-56yVEFVww1wGDHB9D72W3__4jUaKHC_aEdlVvH7qfnYwcgo_Y7N0qZfyPKZ8="
+        }""";
 
     public TestTokenUtil() {
     }
 
-    public String mockAccessToken(final int validitySeconds) {
-        return mockAccessToken(TOKEN_ISSUER_ID, System.currentTimeMillis(), validitySeconds);
+    public String mockAccessToken(final int validityMinutes) {
+        return mockAccessToken(TOKEN_ISSUER_ID, System.currentTimeMillis(), validityMinutes);
     }
 
-    public String mockAccessToken(final long issuedAtMillis, final int validitySeconds) {
-        return mockAccessToken(TOKEN_ISSUER_ID, issuedAtMillis, validitySeconds);
-    }
-
-    public String mockAccessToken(final String issuerId, final long issuedAtMillis, final int validitySeconds) {
+    public String mockAccessToken(final String issuerId, final long issuedAtMinutes, final int validityMinutes) {
         Collection<GrantedAuthority> clientScopes = Arrays
             .asList(new GrantedAuthority[] { new SimpleGrantedAuthority("uaa.resource") });
-        Set<String> requestedScopes = new HashSet<>(Arrays.asList(new String[] { "openid" }));
-        Set<String> resourceIds = new HashSet<>(Arrays.asList(new String[] { "none" }));
+        Set<String> requestedScopes = new HashSet<>(Arrays.asList("openid", "stuf.write"));
+        Set<String> resourceIds = new HashSet<>(List.of("none"));
         return createAccessToken(issuerId, "1adc931e-d65f-4357-b90d-dd4131b8749a",
-                                 "marissa", "marissa@test.com", validitySeconds, clientScopes, requestedScopes, "cf",
+                                 "marissa", "marissa@test.com", validityMinutes, clientScopes, requestedScopes, "cf",
                                  resourceIds,
-                                 "passsword", null, null, issuedAtMillis, "uaa");
+                                 "passsword", null, null, issuedAtMinutes, "uaa");
     }
 
-    public Authentication mockAuthentication(final int validitySeconds, final String zoneUserScope) {
+    public Authentication mockAuthentication(final int validityMinutes, final String zoneUserScope) {
         Collection<GrantedAuthority> clientScopes = Arrays.asList(new GrantedAuthority[] {
             new SimpleGrantedAuthority("uaa.resource"), new SimpleGrantedAuthority(zoneUserScope)
         });
-        Set<String> requestedScopes = new HashSet<>(Arrays.asList(new String[] { "openid", zoneUserScope }));
-        Set<String> resourceIds = new HashSet<>(Arrays.asList(new String[] { "none" }));
+        Set<String> requestedScopes = new HashSet<>(Arrays.asList("openid", zoneUserScope));
+        Set<String> resourceIds = new HashSet<>(List.of("none"));
         String openIdToken = createAccessToken(TOKEN_ISSUER_ID,
                                                "1adc931e-d65f-4357-b90d-dd4131b8749a", "marissa", "marissa@test.com",
-                                               validitySeconds, clientScopes,
+                                               validityMinutes, clientScopes,
                                                requestedScopes, "cf", resourceIds, "passsword", null,
                                                null, System.currentTimeMillis(),
                                                "uaa");
         return new BearerTokenAuthenticationToken(openIdToken);
     }
 
-    public String mockAccessToken(final String issuerId, final int validitySeconds, final String zoneUserScope) {
+    public String mockAccessToken(final String issuerId, final int validityMinutes, final String zoneUserScope) {
         Collection<GrantedAuthority> clientScopes = Arrays.asList(new GrantedAuthority[] {
             new SimpleGrantedAuthority("uaa.resource"), new SimpleGrantedAuthority(zoneUserScope)
         });
         Set<String> requestedScopes = new HashSet<>(Arrays.asList("openid", zoneUserScope));
-        Set<String> resourceIds = new HashSet<>(Arrays.asList("none"));
+        Set<String> resourceIds = new HashSet<>(List.of("none"));
         return createAccessToken(issuerId,
                                  "1adc931e-d65f-4357-b90d-dd4131b8749a", "marissa",
-                                 "marissa@test.com", validitySeconds, clientScopes,
+                                 "marissa@test.com", validityMinutes, clientScopes,
                                  requestedScopes, "cf", resourceIds, "passsword", null,
                                  null, System.currentTimeMillis(),
                                  "uaa");
     }
 
     private String createAccessToken(final String issuerId, final String userId,
-                                     final String username, final String userEmail, final int validitySeconds,
+                                     final String username, final String userEmail, final int validityMinutes,
                                      final Collection<GrantedAuthority> clientScopes, final Set<String> requestedScopes,
                                      final String clientId,
                                      final Set<String> resourceIds, final String grantType,
                                      final Map<String, String> additionalAuthorizationAttributes,
-                                     final String revocableHashSignature, final long issuedAtMillis,
+                                     final String revocableHashSignature, final long issuedAtMinutes,
                                      final String zoneId) {
+        Instant now = Instant.now();
 
-            Instant now = Instant.now();
-        Map<String, Object> info = new HashMap<>();
-        if (null != additionalAuthorizationAttributes) {
-            info.put(ADDITIONAL_AZ_ATTR, additionalAuthorizationAttributes);
-        }
-
-        String compact =
-            Jwts.builder().claims().issuer("http://trusted.issuer/oauth/token").subject(userId).audience().add(username)
-                .and().add(SCOPE, requestedScopes)
-                .add(AUTHORITIES, clientScopes.stream().map(GrantedAuthority::getAuthority).collect(
-                    Collectors.toSet())).add(AUD, resourceIds).add(CLIENT_ID, clientId)
-                .add(CID, clientId).add(AZP, clientId).add(GRANT_TYPE, grantType)
-                .add(REVOCATION_SIGNATURE, revocableHashSignature)
-                .add(ZONE_ID, zoneId).add(USER_ID, userId).add(USER_NAME, username)
-                .add(EMAIL, userEmail)
-                .issuer(issuerId)
-                .issuer("http://trusted.issuer/oauth/token")
-                .expiration(Date.from(now.plus(5L, ChronoUnit.MINUTES)))
-                .issuedAt(Date.from(now))
-                .and().signWith(getPrivateKey(), SIG.RS256)
-                .compact();
-        return compact;
-          }
-
-    private static KeyPair loadKeyPair() {
-        KeyPairGenerator keyPairGenerator;
         try {
-            keyPairGenerator = KeyPairGenerator.getInstance("RSA");
-            keyPairGenerator.initialize(2048);
-        } catch (Exception e) {
+            // Create JWT claims
+            JWTClaimsSet claimsSet = new JWTClaimsSet.Builder()
+                .subject(username)
+                .issuer(issuerId)
+                .issueTime(Date.from(now.minus(issuedAtMinutes, ChronoUnit.MINUTES)))
+                .expirationTime(Date.from(now.plus(validityMinutes, ChronoUnit.MINUTES))) // 1 hour expiration
+                .claim(SCOPE, requestedScopes)
+                .claim(CID, clientId)
+
+                .claim(ZONE_ID, zoneId)
+                .claim(EMAIL, userEmail)
+                .claim(USER_ID, userId)
+                .claim(USER_NAME, username)
+                .claim(GRANT_TYPE, grantType)
+                .claim(REVOCATION_SIGNATURE, revocableHashSignature)
+                .build();
+            // Create a new JWS object
+            SignedJWT signedJWT = new SignedJWT(
+                new JWSHeader(JWSAlgorithm.RS256),
+                claimsSet
+            );
+            signedJWT.sign(new RSASSASigner(getPrivateKey()));
+
+            // Serialize the token to a string
+            return signedJWT.serialize();
+        } catch (JOSEException e) {
             throw new RuntimeException(e);
         }
-        return keyPairGenerator.genKeyPair();
     }
 
     private static PrivateKey getPrivateKey() {
-        String rsaPrivateKey = UPDATED_TOKEN_SIGNING_KEY.replace("-----BEGIN RSA PRIVATE KEY-----", "");
-        rsaPrivateKey = rsaPrivateKey.replace("-----END RSA PRIVATE KEY-----", "");
+        String rsaPrivateKey = TOKEN_SIGNING_KEY.replace("-----BEGIN PRIVATE KEY-----", "");
+        rsaPrivateKey = rsaPrivateKey.replace("-----END PRIVATE KEY-----", "");
         rsaPrivateKey = rsaPrivateKey.replaceAll("\\s", "").replaceAll("\n", "");
-        System.out.println(rsaPrivateKey);
         PKCS8EncodedKeySpec keySpec = new PKCS8EncodedKeySpec(Base64.getDecoder().decode(rsaPrivateKey));
         KeyFactory kf;
         try {
@@ -257,39 +199,5 @@ public class TestTokenUtil {
         } catch (NoSuchAlgorithmException | InvalidKeySpecException e) {
             throw new RuntimeException(e);
         }
-    }
-
-    public static ResponseEntity<String> mockTokenKeyResponseEntity() {
-        Map<String, Object> responseEntityBody = new HashMap<>();
-        responseEntityBody.put("alg", "SHA256withRSA");
-        responseEntityBody.put("value", TOKEN_VERIFYING_KEY);
-        responseEntityBody.put("kty", "RSA");
-        responseEntityBody.put("use", "sig");
-        responseEntityBody.put("n",
-                               "ANJufZdrvYg5zG61x36pDq59nVUN73wSanA7hVCtN3ftT2Rm1ZTQqp5KSCfLMhaaVvJY51sHj+/i4lqUaM9CO32G93fE44VfOmPfexZ"
-                               +
-                               "eAwa8YDOikyTrhP7sZ6A4WUNeC4DlNnJF4zsznU7JxjCkASwpdL6XFwbRSzGkm6b9aM4vIewyclWehJxUGVFhnYEzIQ65qnr38feV"
-                               +
-                               "P9enOVgQzpKsCJ+xpa8vZ/UrscoG3/IOQM6VnLrGYAyyCGeyU1JXQW/KlNmtA5eJry2Tp+MD6I34/QsNkCArHOfj8H9tXz/oc3/tV"
-                               + "kkR252L/Lmp0TtIGfHpBmoITP9h+oKiW6NpyCc=");
-        responseEntityBody.put("e", "AQAB");
-        return new ResponseEntity<>(new Gson().toJson(responseEntityBody), HttpStatus.OK);
-    }
-
-    public static ResponseEntity<String> mockUpdatedTokenKeyResponseEntity() {
-        Map<String, Object> responseEntityBody = new HashMap<>();
-        responseEntityBody.put("alg", "SHA256withRSA");
-        responseEntityBody.put("value", UPDATED_TOKEN_VERIFYING_KEY);
-        responseEntityBody.put("kty", "RSA");
-        responseEntityBody.put("use", "sig");
-        responseEntityBody.put("n",
-                               "ANJufZdrvYg5zG61x36pDq59nVUN73wSanA7hVCtNdsfasf3ftT2Rm1ZTQqp5KSCfLMhaaVvJY51sHj+/i4lqUaM9CO32G93fE44VfOmPfexZ"
-                               +
-                               "eAwa8YDOikyTrhP7sZ6A4WUNeC4DlNnJF4zsznU7JxjCkASwpdL6XFwbRSzGkm6b9aM4vIewyclWehJxUGVFhnYEzIQ65qnr38feV"
-                               +
-                               "P9enOVgQzpKsCJ+xpa8vZ/UrscoG3/IOQM6VnLrGYAyyCGeyU1JXQW/KlNmtA5eJry2Tp+MD6I34/QsNkCArHOfj8H9tXz/oc3/tV"
-                               + "kkR252L/Lmp0TtIGfHpBmoITP9h+oKiW6NpyCc=");
-        responseEntityBody.put("e", "AQAB");
-        return new ResponseEntity<>(new Gson().toJson(responseEntityBody), HttpStatus.OK);
     }
 }
