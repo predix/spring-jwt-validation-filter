@@ -16,6 +16,7 @@
 
 package com.ge.predix.uaa.token.lib;
 
+import java.io.Serial;
 import java.util.Collection;
 
 import org.springframework.security.authentication.AbstractAuthenticationToken;
@@ -33,6 +34,7 @@ public class RemoteUserAuthentication extends AbstractAuthenticationToken implem
     /**
      *
      */
+    @Serial
     private static final long serialVersionUID = 1L;
     private final String id;
     private final String username;

@@ -18,6 +18,7 @@ package com.ge.predix.uaa.token.lib;
 
 import java.io.IOException;
 
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.client.ClientHttpResponse;
 import org.springframework.web.client.DefaultResponseErrorHandler;
 
@@ -30,7 +31,7 @@ public class FastTokenServicesResponseErrorHandler extends DefaultResponseErrorH
      */
     @Override
     public void handleError(final ClientHttpResponse response) throws IOException {
-        if (response.getRawStatusCode() != 400) {
+        if (!response.getStatusCode().isSameCodeAs(HttpStatusCode.valueOf(400))) {
             super.handleError(response);
         }
     }
