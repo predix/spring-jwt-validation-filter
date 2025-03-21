@@ -16,25 +16,6 @@
 
 package com.ge.predix.uaa.token.lib;
 
-import org.apache.commons.lang3.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Required;
-import org.springframework.http.HttpStatus;
-import org.springframework.security.core.AuthenticationException;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.oauth2.common.OAuth2AccessToken;
-import org.springframework.security.oauth2.common.exceptions.InvalidRequestException;
-import org.springframework.security.oauth2.common.exceptions.InvalidTokenException;
-import org.springframework.security.oauth2.provider.OAuth2Authentication;
-import org.springframework.security.oauth2.provider.token.ResourceServerTokenServices;
-import org.springframework.util.AntPathMatcher;
-import org.springframework.web.client.HttpStatusCodeException;
-import org.springframework.web.util.UriUtils;
-
-import javax.servlet.http.HttpServletRequest;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
@@ -43,11 +24,30 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
+import jakarta.servlet.http.HttpServletRequest;
+import org.apache.commons.lang3.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.authentication.AbstractAuthenticationToken;
+import org.springframework.security.authentication.AuthenticationProvider;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.oauth2.server.resource.InvalidBearerTokenException;
+import org.springframework.security.oauth2.server.resource.authentication.BearerTokenAuthenticationToken;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
+import org.springframework.util.AntPathMatcher;
+import org.springframework.web.client.HttpStatusCodeException;
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.util.UriUtils;
+
 /**
  *
  * @author 212304931
  */
-public abstract class AbstractZoneAwareTokenService implements ResourceServerTokenServices {
+public abstract class AbstractZoneAwareTokenService implements AuthenticationProvider {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractZoneAwareTokenService.class);
 
@@ -57,80 +57,90 @@ public abstract class AbstractZoneAwareTokenService implements ResourceServerTok
 
     private final AntPathMatcher pathMatcher = new AntPathMatcher();
 
-    private DefaultZoneConfiguration defaultZoneConfig;
+    private final DefaultZoneConfiguration defaultZoneConfig;
 
     private FastTokenServices defaultFastTokenService;
 
-    @Autowired(required = true)
-    private HttpServletRequest request;
+    private final HttpServletRequest request;
 
-    private List<String> serviceZoneHeadersList = Arrays.asList("Predix-Zone-Id");
+    private List<String> serviceZoneHeadersList = List.of("Predix-Zone-Id");
 
     private List<String> serviceBaseDomainList;
 
     private boolean useSubdomainsForZones = true;
 
-    private String serviceId;
-
-    private boolean storeClaims = false;
+    private final String serviceId;
 
     private boolean useHttps = true;
 
     private FastTokenServicesCreator fastRemoteTokenServicesCreator = new FastTokenServicesCreator();
 
-    @Override
-    public OAuth2Authentication loadAuthentication(final String accessToken)
-            throws AuthenticationException, InvalidTokenException {
+    public AbstractZoneAwareTokenService(final String serviceId, final DefaultZoneConfiguration defaultZoneConfig,
+                                         final HttpServletRequest request) {
+        this.serviceId = serviceId;
+        this.defaultZoneConfig = defaultZoneConfig;
+        this.request = request;
+    }
 
+    @Override
+    public boolean supports(final Class<?> authentication) {
+        return BearerTokenAuthenticationToken.class.isAssignableFrom(authentication);
+    }
+
+    @Override
+    public Authentication authenticate(final Authentication authentication)
+            throws AuthenticationException {
+        LOGGER.debug("Authenticating token for service: {}", this.serviceId);
         // Get zone id being requested from HTTP request
         String zoneId = HttpServletRequestUtil.getZoneName(this.request, this.getServiceBaseDomainList(),
-                this.getServiceZoneHeadersList(), this.useSubdomainsForZones);
-
+                                                           this.getServiceZoneHeadersList(),
+                                                           this.useSubdomainsForZones);
         String requestUri = this.request.getRequestURI();
-
-        OAuth2Authentication authentication;
+        Authentication authenticationResponse;
         if (isNonZoneSpecificRequest(requestUri)) {
             if (zoneId == null) {
-                authentication = authenticateNonZoneSpecificRequest(accessToken);
+                authenticationResponse = authenticateNonZoneSpecificRequest(authentication);
             } else {
-                throw new InvalidRequestException("Resource not available for specified zone: " + zoneId);
+                throw new InvalidBearerTokenException("Resource not available for specified zone: " + zoneId);
             }
         } else {
             if (zoneId == null) {
-                throw new InvalidRequestException("No zone specified for zone specific request:  " + requestUri);
+                throw new InvalidBearerTokenException("No zone specified for zone specific request:  " + requestUri);
             } else {
                 try {
-                    authentication = authenticateZoneSpecificRequest(accessToken, zoneId);
+                    authenticationResponse = authenticateZoneSpecificRequest(authentication, zoneId);
                 } catch (HttpStatusCodeException e) {
                     // Translate 404 from ZAC into InvalidRequestException
                     if (e.getStatusCode() != HttpStatus.NOT_FOUND) {
                         throw e;
                     }
-                    throw new InvalidTokenException(String.format(UNAUTHORIZE_MESSAGE, zoneId));
+                    throw new InvalidBearerTokenException(UNAUTHORIZE_MESSAGE.formatted(zoneId));
                 }
             }
         }
-
-        return authentication;
+        LOGGER.debug("Token authenticated for service: {}", this.serviceId);
+        return authenticationResponse;
     }
 
-    private OAuth2Authentication authenticateNonZoneSpecificRequest(final String accessToken) {
-        OAuth2Authentication authentication;
+    private Authentication authenticateNonZoneSpecificRequest(final Authentication accessToken) {
+        Authentication authentication;
         if (this.defaultFastTokenService == null) {
             this.defaultFastTokenService = createFastTokenService(this.defaultZoneConfig.getTrustedIssuerIds());
         }
-        authentication = this.defaultFastTokenService.loadAuthentication(accessToken);
+        authentication = this.defaultFastTokenService.authenticate(accessToken);
         return authentication;
     }
 
-    private OAuth2Authentication authenticateZoneSpecificRequest(final String accessToken, final String zoneId) {
-        OAuth2Authentication authentication;
+    private Authentication authenticateZoneSpecificRequest(final Authentication accessToken, final String zoneId) {
+        LOGGER.debug("Authenticating token for zone: {}", zoneId);
+        Authentication authentication;
         FastTokenServices tokenServices = getOrCreateZoneTokenService(zoneId);
-        authentication = tokenServices.loadAuthentication(accessToken);
-        assertUserZoneAccess(authentication, zoneId);
+        authentication = tokenServices.authenticate(accessToken);
+        assertUserZoneAccess((AbstractAuthenticationToken) authentication, zoneId);
 
         // Decorate authentication object with zoneId
-        authentication = new ZoneOAuth2Authentication(authentication.getOAuth2Request(), authentication, zoneId);
+        authentication = new ZoneOAuth2Authentication((JwtAuthenticationToken) authentication, zoneId);
+        LOGGER.debug("Token authenticated for zone: {}", zoneId);
         return authentication;
     }
 
@@ -152,6 +162,7 @@ public abstract class AbstractZoneAwareTokenService implements ResourceServerTok
     }
 
     String normalizeUri(final String requestUri) {
+        LOGGER.debug("Normalizing request URI: {}", requestUri);
         String normalizedUri = null;
         try {
             // Decode request URI to resolve percent-encoded special characters.
@@ -166,56 +177,39 @@ public abstract class AbstractZoneAwareTokenService implements ResourceServerTok
             // For example, "/v1/hello/../policy-set/my%20policy" --> "/v1/policy-set/my%20policy"
             normalizedUri = new URI(encodedUri).normalize().toString();
         } catch (URISyntaxException e) {
-            throw new InvalidRequestException("Unable to normalize request URL: " + requestUri, e);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unable to normalize request URL: " + requestUri,
+                                              e);
         }
+        LOGGER.debug("Normalized request URI: {}", normalizedUri);
         return normalizedUri;
     }
 
     protected abstract FastTokenServices getOrCreateZoneTokenService(final String zoneId);
 
-    private void assertUserZoneAccess(final OAuth2Authentication authentication, final String zoneId) {
+    private void assertUserZoneAccess(final AbstractAuthenticationToken authentication, final String zoneId) {
         Collection<? extends GrantedAuthority> authenticationAuthorities = authentication.getAuthorities();
         String expectedScope = this.serviceId + ".zones." + zoneId + ".user";
 
         if (!authenticationAuthorities.contains(new SimpleGrantedAuthority(expectedScope))) {
             LOGGER.debug("Invalid token scope. Did not find expected scope: " + expectedScope);
-            // This exception is translated to HTTP 401. InsufficientAuthenticationException results in 500
-            throw new InvalidTokenException(String.format(UNAUTHORIZE_MESSAGE, zoneId));
+            throw new InvalidBearerTokenException(UNAUTHORIZE_MESSAGE.formatted(zoneId));
         }
     }
 
     protected FastTokenServices createFastTokenService(final List<String> trustedIssuers) {
+        LOGGER.debug("Creating FastTokenServices for service: {}", this.serviceId);
         FastTokenServices tokenServices;
         //Create FastTokenServices with indefinite caching of public keys, since the tokenServices are cached here 
         //with a TTL.
         tokenServices = this.fastRemoteTokenServicesCreator.newInstance();
-        tokenServices.setStoreClaims(true);
         tokenServices.setUseHttps(this.useHttps);
         tokenServices.setTrustedIssuers(trustedIssuers);
+        LOGGER.debug("FastTokenServices created for service: {}", this.serviceId);
         return tokenServices;
-    }
-
-
-    @Override
-    public OAuth2AccessToken readAccessToken(final String accessToken) {
-        throw new UnsupportedOperationException("Not supported: read access token");
     }
 
     public String getServiceId() {
         return this.serviceId;
-    }
-
-    @Required
-    public void setServiceId(final String serviceId) {
-        this.serviceId = serviceId;
-    }
-
-    public boolean isStoreClaims() {
-        return this.storeClaims;
-    }
-
-    public void setStoreClaims(final boolean storeClaims) {
-        this.storeClaims = storeClaims;
     }
 
     public void setFastRemoteTokenServicesCreator(final FastTokenServicesCreator fastRemoteTokenServicesCreator) {
@@ -229,10 +223,6 @@ public abstract class AbstractZoneAwareTokenService implements ResourceServerTok
 
     public void setUseHttps(final boolean useHttps) {
         this.useHttps = useHttps;
-    }
-
-    public void setRequest(final HttpServletRequest request) {
-        this.request = request;
     }
 
     public FastTokenServices getDefaultFastTokenService() {
@@ -259,11 +249,6 @@ public abstract class AbstractZoneAwareTokenService implements ResourceServerTok
         }
     }
 
-    @Required
-    public void setDefaultZoneConfig(final DefaultZoneConfiguration defaultZoneConfig) {
-        this.defaultZoneConfig = defaultZoneConfig;
-    }
-
     public List<String> getServiceZoneHeadersList() {
         return this.serviceZoneHeadersList;
     }
@@ -279,5 +264,4 @@ public abstract class AbstractZoneAwareTokenService implements ResourceServerTok
     public boolean isUseSubdomainsForZones() {
         return this.useSubdomainsForZones;
     }
-
 }

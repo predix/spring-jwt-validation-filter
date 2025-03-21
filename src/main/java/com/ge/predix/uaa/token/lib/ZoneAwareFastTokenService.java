@@ -16,7 +16,14 @@
 
 package com.ge.predix.uaa.token.lib;
 
+import jakarta.servlet.http.HttpServletRequest;
+
 public class ZoneAwareFastTokenService extends AbstractZoneAwareTokenService {
+
+    public ZoneAwareFastTokenService(final String serviceId, final DefaultZoneConfiguration defaultZoneConfig,
+                                     final HttpServletRequest request) {
+        super(serviceId, defaultZoneConfig, request);
+    }
 
     @Override
     protected FastTokenServices getOrCreateZoneTokenService(final String zoneId) {

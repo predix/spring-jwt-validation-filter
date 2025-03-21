@@ -20,9 +20,9 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import javax.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequest;
 
-import org.springframework.util.StringUtils;
+import org.springframework.util.ObjectUtils;
 
 public final class HttpServletRequestUtil {
 
@@ -67,7 +67,7 @@ public final class HttpServletRequestUtil {
             zoneName = getZoneFromSubdomain(req, serviceBaseDomainList);
         }
 
-        if (StringUtils.isEmpty(zoneName)) {
+        if (ObjectUtils.isEmpty(zoneName)) {
             zoneName = findHeader(req, headerNames);
         }
         return zoneName;
@@ -92,7 +92,7 @@ public final class HttpServletRequestUtil {
         String subdomain;
         for (String name : headerNames) {
             subdomain = req.getHeader(name);
-            if (!StringUtils.isEmpty(subdomain)) {
+            if (!ObjectUtils.isEmpty(subdomain)) {
                 return subdomain;
             }
         }
