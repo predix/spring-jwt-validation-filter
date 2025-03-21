@@ -4,7 +4,6 @@
 def digitalGridArtServer = Artifactory.server('Digital-Artifactory')
 def ARTIFACTORY_SERVER_URL = digitalGridArtServer.getUrl()
 library "security-ci-commons-shared-lib"
-def NODE = nodeDetails("java")
 
 // Change Snapshot to your own DevCloud Artifactory repo name
 def Snapshot = 'PROPEL'
@@ -18,7 +17,7 @@ pipeline {
         stage ('Build and Test') {
             agent {
                 docker {
-                    image 'maven:3.5-jdk-8-alpine'
+                    image 'maven:3.9.9-amazoncorretto-21-alpine'
                     label 'dind'
                     args '-v /root/.m2:/root/.m2'
                 }
@@ -52,8 +51,9 @@ pipeline {
         stage('Publish Artifacts') {
             agent {
                 docker {
-                    image "${NODE['IMAGE']}"
-                    label "${NODE['LABEL']}"
+                    image 'maven:3.9.9-amazoncorretto-21-alpine'
+                    label 'dind'
+                    args '-v /root/.m2:/root/.m2'
                 }
             }
             when {
@@ -66,7 +66,7 @@ pipeline {
             }
             steps {
                 dir('spring-filters-config') {
-                    git branch: 'master', changelog: false, credentialsId: 'github.build.ge.com', poll: false, url: 'https://github.build.ge.com/predix/spring-filters-config'
+                    git branch: 'master', changelog: false, credentialsId: 'github.software.gevernova.com', poll: false, url: 'https://github.software.gevernova.com/pers/spring-filters-config.git'
                 }
                 unstash 'uaa-token-lib-jar'
                 script {

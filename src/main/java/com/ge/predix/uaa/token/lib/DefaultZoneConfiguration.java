@@ -21,16 +21,19 @@ import java.util.List;
 
 import org.springframework.beans.factory.BeanCreationException;
 import org.springframework.beans.factory.InitializingBean;
-import org.springframework.beans.factory.annotation.Required;
 import org.springframework.util.AntPathMatcher;
 
 public class DefaultZoneConfiguration implements InitializingBean {
     private List<String> allowedUriPatterns;
     private List<String> trustedIssuerIds = new ArrayList<>();
 
+    public DefaultZoneConfiguration(final List<String> allowedUriPatterns) {
+        setAllowedUriPatterns(allowedUriPatterns);
+    }
+
     // This field is for backward compatibility.
     public String getTrustedIssuerId() {
-        return this.trustedIssuerIds.isEmpty() ? null : this.trustedIssuerIds.get(0);
+        return this.trustedIssuerIds.isEmpty() ? null : this.trustedIssuerIds.getFirst();
     }
 
     public void setTrustedIssuerId(final String trustedIssuerId) {
@@ -49,7 +52,6 @@ public class DefaultZoneConfiguration implements InitializingBean {
         return this.allowedUriPatterns;
     }
 
-    @Required
     public void setAllowedUriPatterns(final List<String> allowedUriPatterns) {
         AntPathMatcher matcher = new AntPathMatcher();
 

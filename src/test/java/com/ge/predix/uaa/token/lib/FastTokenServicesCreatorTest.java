@@ -16,7 +16,7 @@
 
 package com.ge.predix.uaa.token.lib;
 
-import org.springframework.security.jwt.crypto.sign.SignatureVerifier;
+import com.nimbusds.jose.crypto.RSASSAVerifier;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
@@ -36,7 +36,7 @@ public class FastTokenServicesCreatorTest {
     @Test
     public void testNewInstance() {
         FastTokenServices tokenServices = creator.newInstance();
-        LoadingCache<String, SignatureVerifier> tokenKeys = (LoadingCache<String, SignatureVerifier>)
+        LoadingCache<String, RSASSAVerifier> tokenKeys = (LoadingCache<String, RSASSAVerifier>)
                 ReflectionTestUtils.getField(tokenServices, "tokenKeys");
         Assert.assertNotNull(tokenKeys, "The TokenKeys Map must have been initialized");
     }

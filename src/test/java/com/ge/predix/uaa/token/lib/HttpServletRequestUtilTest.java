@@ -117,7 +117,7 @@ public class HttpServletRequestUtilTest {
             boolean useSubdomainsForZones) {
         MockHttpServletRequest req = new MockHttpServletRequest();
         req.setServerName(requestHostname);
-        req.addHeader(serviceConfigHeaders.get(0), requestHeaderValue);
+        req.addHeader(serviceConfigHeaders.getFirst(), requestHeaderValue);
         String actualZone = HttpServletRequestUtil.getZoneName(req, serviceBaseDomains, serviceConfigHeaders,
                 useSubdomainsForZones);
         Assert.assertEquals(actualZone, expectedZone);
@@ -128,19 +128,19 @@ public class HttpServletRequestUtilTest {
         return new Object[][] {
                 // headers only configured
                 { null, "Predix-Zone-Id", "predix-test-subdomain", Collections.emptyList(),
-                        Arrays.asList("Predix-Zone-Id"), "predix-test-subdomain" },
+                  List.of("Predix-Zone-Id"), "predix-test-subdomain" },
                 { null, "Predix-Zone-Id", "predix-test-subdomain", Collections.emptyList(),
-                        Arrays.asList("predix-zone-id"), "predix-test-subdomain" },
+                  List.of("predix-zone-id"), "predix-test-subdomain" },
                 { null, "predix-zone-id", "predix-test-subdomain", Collections.emptyList(),
-                        Arrays.asList("Predix-Zone-Id"), "predix-test-subdomain" },
+                  List.of("Predix-Zone-Id"), "predix-test-subdomain" },
                 { null, "ACS-Zone-Subdomain", "acs-test-subdomain", null,
                         Arrays.asList("Predix-Zone-Id", "ACS-Zone-Subdomain"), "acs-test-subdomain" },
-                { null, "Predix-Zone-Id", "", null, Arrays.asList(""), null },
+                { null, "Predix-Zone-Id", "", null, List.of(""), null },
                 { null, "unrecognized-headaer", "", null, Arrays.asList("Predix-Zone-Id", "ACS-Zone-Subdomain"), null },
-                { null, "Predix-Zone-Id", "some-value", null, Arrays.asList("Unrecognized-Header"), null },
+                { null, "Predix-Zone-Id", "some-value", null, List.of("Unrecognized-Header"), null },
                 // domains only configured
-                { "zone1.acs.com", "Predix-Zone-Id", "DONTUSE", Arrays.asList("acs.com"), Collections.emptyList(),
-                        "zone1" },
+                { "zone1.acs.com", "Predix-Zone-Id", "DONTUSE", List.of("acs.com"), Collections.emptyList(),
+                  "zone1" },
                 { "zone1.acs.com", "Predix-Zone-Id", "DONTUSE", Arrays.asList("acs.com", "guardians.com"),
                         Collections.emptyList(), "zone1" },
                 { "zone2.guardians.com", "Predix-Zone-Id", "DONTUSE", Arrays.asList("acs.com", "guardians.com"),
