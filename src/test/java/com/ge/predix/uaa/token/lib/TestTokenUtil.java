@@ -41,7 +41,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JWSAlgorithm;
@@ -165,7 +164,7 @@ public class TestTokenUtil {
                 .expirationTime(Date.from(now.plus(validityMinutes, ChronoUnit.MINUTES))) // 1 hour expiration
                 .claim(SCOPE, requestedScopes)
                 .claim(CID, clientId)
-
+                .claim(AUTHORITIES, List.of("uaa.resource", "test.resource"))
                 .claim(ZONE_ID, zoneId)
                 .claim(EMAIL, userEmail)
                 .claim(USER_ID, userId)
