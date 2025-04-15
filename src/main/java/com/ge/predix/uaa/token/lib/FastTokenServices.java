@@ -40,9 +40,11 @@ import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
+import org.springframework.security.oauth2.server.resource.BearerTokenErrors;
 import org.springframework.security.oauth2.server.resource.InvalidBearerTokenException;
 import org.springframework.security.oauth2.server.resource.authentication.BearerTokenAuthenticationToken;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
@@ -75,6 +77,10 @@ public class FastTokenServices implements AuthenticationProvider, InitializingBe
     private long issuerPublicKeyTTLMillis = DEFAULT_TTL_24HR_MILLIS;
 
     private List<String> trustedIssuers;
+
+    private String expectedResourceId;
+
+    private String resourceIdClaimName = "aud";
 
     private LoadingCache<String, RSASSAVerifier> tokenKeys;
 
@@ -161,13 +167,15 @@ public class FastTokenServices implements AuthenticationProvider, InitializingBe
         } catch (JOSEException e) {
             throw new RuntimeException(e);
         }
-        AbstractAuthenticationToken token = this.jwtAuthenticationConverter.convert(jwtDecoder.decode(accessToken));
+        Jwt jwt = jwtDecoder.decode(accessToken);
+        AbstractAuthenticationToken token = this.jwtAuthenticationConverter.convert(jwt);
         if (token != null && token.getDetails() == null) {
             token.setDetails(authentication.getDetails());
             token.setAuthenticated(true);
         } else {
             throw new InvalidBearerTokenException("Invalid Access Token");
         }
+        validateResourceId(jwt);
         LOG.debug("Authentication successful.");
         return token;
     }
@@ -228,6 +236,17 @@ public class FastTokenServices implements AuthenticationProvider, InitializingBe
                 .toUriString();
     }
 
+    private void validateResourceId(final Jwt jwt) {
+        if (expectedResourceId == null) {
+            return;
+        }
+        List<String> audienceList = jwt.getClaimAsStringList(resourceIdClaimName);
+        if (audienceList == null || !audienceList.contains(expectedResourceId)) {
+            throw new OAuth2AuthenticationException(
+                BearerTokenErrors.insufficientScope("Invalid resource ID", expectedResourceId));
+        }
+    }
+
     protected Map<String, Object> getTokenClaims(final SignedJWT signedJWT) throws ParseException {
         JWTClaimsSet claims = signedJWT.getJWTClaimsSet();
         return claims.getClaims();
@@ -265,8 +284,16 @@ public class FastTokenServices implements AuthenticationProvider, InitializingBe
         this.issuerPublicKeyTTLMillis = ttlMillis;
     }
 
+    public void setExpectedResourceId(final String expectedResourceId) {
+        this.expectedResourceId = expectedResourceId;
+    }
+
     @Override
     public boolean supports(final Class<?> authentication) {
         return BearerTokenAuthenticationToken.class.isAssignableFrom(authentication);
+    }
+
+    public void setResourceIdClaimName(final String resourceIdClaimName) {
+        this.resourceIdClaimName = resourceIdClaimName;
     }
 }
