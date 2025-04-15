@@ -1,9 +1,14 @@
 package com.ge.predix.uaa.token.lib;
 
+import static com.ge.predix.uaa.token.lib.Claims.AUTHORITIES;
 import static com.ge.predix.uaa.token.lib.TestTokenUtil.TOKEN_ISSUER_ID;
 import static com.ge.predix.uaa.token.lib.TestTokenUtil.TOKEN_KEY_RESPONSE;
-import static org.mockito.Mockito.*;
-import static org.testng.Assert.*;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.anyString;
+import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.when;
+import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertNotNull;
 
 import java.text.ParseException;
 import java.time.LocalDateTime;
@@ -13,11 +18,17 @@ import java.util.List;
 import java.util.Map;
 
 import com.nimbusds.jwt.SignedJWT;
-import org.mockito.*;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.Mockito;
+import org.mockito.MockitoAnnotations;
 import org.springframework.core.convert.converter.Converter;
-import org.springframework.http.*;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.InvalidBearerTokenException;
 import org.springframework.security.oauth2.server.resource.authentication.BearerTokenAuthenticationToken;
@@ -26,7 +37,8 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.web.client.RestOperations;
 import org.springframework.web.client.RestTemplate;
-import org.testng.annotations.*;
+import org.testng.annotations.BeforeMethod;
+import org.testng.annotations.Test;
 
 public class FastTokenServicesTest {
 
@@ -75,6 +87,39 @@ public class FastTokenServicesTest {
         assertNotNull(result.getCredentials());
         assertEquals(result.getAuthorities(), authenticationToken.getAuthorities());
         assertEquals(result.getAuthorities().size(), authenticationToken.getAuthorities().size());
+    }
+
+    @Test
+    public void authenticate_ValidToken_Valid_ResourceId() throws Exception {
+        String token =
+            testTokenUtil.mockAccessToken(TOKEN_ISSUER_ID, LocalDateTime.now().plusDays(3).toInstant(ZoneOffset.UTC)
+                                                                        .toEpochMilli(), 60);
+        Map<String, Object> claimMap = SignedJWT.parse(token).getJWTClaimsSet().getClaims();
+        Map<String, Object> tokenMap = new HashMap<>(claimMap);
+        tokenMap.put(Claims.IAT, LocalDateTime.now().minusDays(1).toInstant(ZoneOffset.UTC));
+        tokenMap.put(Claims.EXP, LocalDateTime.now().plusDays(3).toInstant(ZoneOffset.UTC));
+        Jwt jwt = Jwt.withTokenValue(token).header("alg", "RS256").claims((c) -> c.putAll(tokenMap)).build();
+        when(mockRestTemplate.exchange(anyString(), eq(HttpMethod.GET), any(), eq(String.class)))
+            .thenReturn(new ResponseEntity<>(TOKEN_KEY_RESPONSE, HttpStatus.OK));
+        fastTokenServices.setExpectedResourceId("test.resource");
+        fastTokenServices.setResourceIdClaimName(AUTHORITIES);
+        Authentication result = fastTokenServices.authenticate(new BearerTokenAuthenticationToken(token));
+        assertNotNull(result);
+    }
+
+    @Test(expectedExceptions = OAuth2AuthenticationException.class)
+    public void authenticate_ValidToken_Invalid_ResourceId() throws Exception {
+        String token =
+            testTokenUtil.mockAccessToken(TOKEN_ISSUER_ID, LocalDateTime.now().plusDays(3).toInstant(ZoneOffset.UTC)
+                                                                        .toEpochMilli(), 60);
+        Map<String, Object> claimMap = SignedJWT.parse(token).getJWTClaimsSet().getClaims();
+        Map<String, Object> tokenMap = new HashMap<>(claimMap);
+        tokenMap.put(Claims.IAT, LocalDateTime.now().minusDays(1).toInstant(ZoneOffset.UTC));
+        tokenMap.put(Claims.EXP, LocalDateTime.now().plusDays(3).toInstant(ZoneOffset.UTC));
+        when(mockRestTemplate.exchange(anyString(), eq(HttpMethod.GET), any(), eq(String.class)))
+            .thenReturn(new ResponseEntity<>(TOKEN_KEY_RESPONSE, HttpStatus.OK));
+        fastTokenServices.setExpectedResourceId("test.not.resource");
+        fastTokenServices.authenticate(new BearerTokenAuthenticationToken(token));
     }
 
     @Test(expectedExceptions = InvalidBearerTokenException.class)
