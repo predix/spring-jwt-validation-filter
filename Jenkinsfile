@@ -29,7 +29,7 @@ pipeline {
                     unset HTTP_PROXY
                     unset http_proxy
                     unset https_proxy
-                    mvn -B clean install
+                    mvn -B clean install -Pcoverage
                 '''
                 dir('target') {
                     stash includes: '*.jar', name: 'uaa-token-lib-jar'
@@ -126,6 +126,38 @@ pipeline {
                 failure {
                     echo 'Publish artifacts stage failed'
                 }
+            }
+        }
+        stage ('SonarQube Analysis') {
+            agent {
+                docker {
+                    image 'maven:3.9.9-amazoncorretto-21-alpine'
+                    label 'dind'
+                    args '-v /root/.m2:/root/.m2'
+                }
+            }
+            environment {
+                SONAR_HOST_URL = credentials("SONAR_HOST_URL")
+                SONAR_LOGIN_KEY = credentials("SONAR_LOGIN_KEY")
+            }
+            stages {
+                    stage('SonarQube Scanning') {
+                        steps {
+                            withSonarQubeEnv('SONAR_INSTANCE') {
+                                sh """
+                                    mvn -B clean install -Pcoverage
+                                    mvn -B sonar:sonar -s sonar.xml
+                                """
+                            } // Submitted: SonarQube taskId is automatically attached to the pipeline context
+                        }
+                    }
+                    stage('Quality Gate') {
+                        steps {
+                            timeout(time: 5, unit: 'MINUTES') {
+                                waitForQualityGate abortPipeline: false
+                            } // abortPipeline is set to false else all builds will fail due to less coverage percentage
+                        }
+                    }
             }
         }
 
