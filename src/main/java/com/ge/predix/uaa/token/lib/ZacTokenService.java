@@ -45,12 +45,15 @@ public class ZacTokenService extends AbstractZoneAwareTokenService implements In
 
     private LoadingCache<String, FastTokenServices> tokenServicesCache;
 
-    private final ClientRegistration clientRegistration;
-
     private final String zacUrl;
 
     @Value("${ISSUERS_TTL_SECONDS:86400}")
     private long issuersTtlSeconds;
+
+    @Value("${MAX_CACHE_SIZE:150}")
+    private int maxCacheSize;
+
+    private final RestClient restClient;
 
     /**
      * Sample Client registration snippet.
@@ -67,7 +70,23 @@ public class ZacTokenService extends AbstractZoneAwareTokenService implements In
                            final ClientRegistration clientRegistration) {
         super(serviceId, defaultZoneConfig, request);
         this.zacUrl = zacUrl;
-        this.clientRegistration = clientRegistration;
+        var interceptor = getOAuth2ClientHttpRequestInterceptor(clientRegistration);
+        interceptor.setClientRegistrationIdResolver(httpRequest -> clientRegistration.getRegistrationId());
+        restClient = RestClient.builder()
+                               .requestInterceptor(interceptor)
+                               .defaultStatusHandler(new DefaultResponseErrorHandler())
+                               .build();
+    }
+
+    private static OAuth2ClientHttpRequestInterceptor getOAuth2ClientHttpRequestInterceptor(
+        final ClientRegistration clientRegistration) {
+        InMemoryClientRegistrationRepository clientRegistrationRepository = new InMemoryClientRegistrationRepository(
+            clientRegistration);
+        InMemoryOAuth2AuthorizedClientService clientService =
+            new InMemoryOAuth2AuthorizedClientService(clientRegistrationRepository);
+        AuthorizedClientServiceOAuth2AuthorizedClientManager authorizedClientManager =
+            new AuthorizedClientServiceOAuth2AuthorizedClientManager(clientRegistrationRepository, clientService);
+        return new OAuth2ClientHttpRequestInterceptor(authorizedClientManager);
     }
 
     /**
@@ -92,11 +111,7 @@ public class ZacTokenService extends AbstractZoneAwareTokenService implements In
         FastTokenServices tokenServices;
         String trustedIssuersURL = this.zacUrl + "/v1/registration/" + getServiceId() + "/" + zoneId;
         try {
-            OAuth2ClientHttpRequestInterceptor interceptor = getOAuth2ClientHttpRequestInterceptor();
-            ResponseEntity<TrustedIssuers> response = RestClient.builder()
-                                                                .requestInterceptor(interceptor)
-                                                                .defaultStatusHandler(new DefaultResponseErrorHandler())
-                                                                .build().get().uri(trustedIssuersURL).retrieve()
+            ResponseEntity<TrustedIssuers> response = restClient.get().uri(trustedIssuersURL).retrieve()
                                                                 .toEntity(TrustedIssuers.class);
             tokenServices = super.createFastTokenService(
                 Objects.requireNonNull(response.getBody()).getTrustedIssuerIds());
@@ -106,21 +121,6 @@ public class ZacTokenService extends AbstractZoneAwareTokenService implements In
         }
         LOGGER.debug("Created FastTokenServices for zone: {}", zoneId);
         return tokenServices;
-    }
-
-    /**
-     * Creates an OAuth2ClientHttpRequestInterceptor for the client registration.
-     *
-     * @return the OAuth2ClientHttpRequestInterceptor instance
-     */
-    private OAuth2ClientHttpRequestInterceptor getOAuth2ClientHttpRequestInterceptor() {
-        var clientRegistrationRepository = new InMemoryClientRegistrationRepository(clientRegistration);
-        var clientService = new InMemoryOAuth2AuthorizedClientService(clientRegistrationRepository);
-        var authorizedClientManager =
-            new AuthorizedClientServiceOAuth2AuthorizedClientManager(clientRegistrationRepository, clientService);
-        var interceptor = new OAuth2ClientHttpRequestInterceptor(authorizedClientManager);
-        interceptor.setClientRegistrationIdResolver(request -> clientRegistration.getRegistrationId());
-        return interceptor;
     }
 
     public void setIssuersTtlSeconds(final long issuersTtlSeconds) {
@@ -138,8 +138,11 @@ public class ZacTokenService extends AbstractZoneAwareTokenService implements In
     @Override
     public void afterPropertiesSet() {
         LOGGER.info("TTL for token services cache is set to {} seconds.", this.issuersTtlSeconds);
-        this.tokenServicesCache = Caffeine.newBuilder().expireAfterWrite(this.issuersTtlSeconds, TimeUnit.SECONDS)
-                .build(this::createFastTokenService);
+        this.tokenServicesCache = Caffeine.newBuilder()
+                                          .expireAfterWrite(this.issuersTtlSeconds, TimeUnit.SECONDS)
+                                          .maximumSize(
+                                              maxCacheSize) // <-- Set an appropriate max size for your use case
+                                          .build(this::createFastTokenService);
         checkIfZonePropertiesSet();
     }
 }
