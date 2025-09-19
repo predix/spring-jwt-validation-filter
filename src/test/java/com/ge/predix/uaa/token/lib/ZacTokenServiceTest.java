@@ -305,6 +305,7 @@ public class ZacTokenServiceTest {
         zoneConfig.setTrustedIssuerIds(trustedIssuers);
 
         ClientRegistration mockRegistration = mock(ClientRegistration.class);
+        when(mockRegistration.getRegistrationId()).thenReturn("testClientRegistrationId");
         ZacTokenService zacTokenServices = new ZacTokenService(SERVICEID, zoneConfig, "", request, mockRegistration);
         zacTokenServices.setServiceZoneHeaders(configuredHeaderNames);
         zacTokenServices.setFastRemoteTokenServicesCreator(mockFTSC);
