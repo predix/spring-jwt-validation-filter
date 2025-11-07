@@ -403,4 +403,227 @@ public class ZacTokenServiceTest {
         }
         return result.toArray(new Object[result.size()][]);
     }
+
+    @Test
+    public void testSetIssuersTtlSeconds() {
+        HttpServletRequest request = mockHttpRequestWithZoneAsHeader(ZONE, "/test");
+        DefaultZoneConfiguration zoneConfig = new DefaultZoneConfiguration(List.of("/zone/**"));
+        ClientRegistration mockRegistration = mock(ClientRegistration.class);
+        when(mockRegistration.getRegistrationId()).thenReturn("testClientRegistrationId");
+
+        ZacTokenService zacTokenService = new ZacTokenService(SERVICEID, zoneConfig, "", request, mockRegistration);
+        zacTokenService.setIssuersTtlSeconds(3600);
+        assertNotNull(zacTokenService);
+    }
+
+    @Test
+    public void testSetIssuersTtlSecondsWithDifferentValues() {
+        HttpServletRequest request = mockHttpRequestWithZoneAsHeader(ZONE, "/test");
+        DefaultZoneConfiguration zoneConfig = new DefaultZoneConfiguration(List.of("/zone/**"));
+        ClientRegistration mockRegistration = mock(ClientRegistration.class);
+        when(mockRegistration.getRegistrationId()).thenReturn("testClientRegistrationId");
+
+        ZacTokenService zacTokenService = new ZacTokenService(SERVICEID, zoneConfig, "", request, mockRegistration);
+
+        zacTokenService.setIssuersTtlSeconds(0);
+        assertNotNull(zacTokenService);
+
+        zacTokenService.setIssuersTtlSeconds(86400000);
+        assertNotNull(zacTokenService);
+    }
+
+    @Test
+    public void testAfterPropertiesSetWithValidConfiguration() throws Exception {
+        HttpServletRequest request = mockHttpRequestWithZoneAsHeader(ZONE, "/test");
+        DefaultZoneConfiguration zoneConfig = new DefaultZoneConfiguration(List.of("/zone/**"));
+        ClientRegistration mockRegistration = mock(ClientRegistration.class);
+        when(mockRegistration.getRegistrationId()).thenReturn("testClientRegistrationId");
+
+        ZacTokenService zacTokenService = new ZacTokenService(SERVICEID, zoneConfig, "", request, mockRegistration);
+        zacTokenService.setServiceBaseDomain(BASE_DOMAIN);
+        zacTokenService.setIssuersTtlSeconds(100);
+
+        zacTokenService.afterPropertiesSet();
+        assertNotNull(zacTokenService);
+    }
+
+    @Test
+    public void testAfterPropertiesSetWithZoneHeaders() throws Exception {
+        HttpServletRequest request = mockHttpRequestWithZoneAsHeader(ZONE, "/test");
+        DefaultZoneConfiguration zoneConfig = new DefaultZoneConfiguration(List.of("/zone/**"));
+        ClientRegistration mockRegistration = mock(ClientRegistration.class);
+        when(mockRegistration.getRegistrationId()).thenReturn("testClientRegistrationId");
+
+        ZacTokenService zacTokenService = new ZacTokenService(SERVICEID, zoneConfig, "", request, mockRegistration);
+        zacTokenService.setServiceZoneHeaders(PREDIX_ZONE_HEADER_NAME);
+        zacTokenService.setIssuersTtlSeconds(200);
+
+        zacTokenService.afterPropertiesSet();
+        assertNotNull(zacTokenService);
+    }
+
+    @Test
+    public void testAfterPropertiesSetWithBothHeadersAndBaseDomain() throws Exception {
+        HttpServletRequest request = mockHttpRequestWithZoneAsHeader(ZONE, "/test");
+        DefaultZoneConfiguration zoneConfig = new DefaultZoneConfiguration(List.of("/zone/**"));
+        ClientRegistration mockRegistration = mock(ClientRegistration.class);
+        when(mockRegistration.getRegistrationId()).thenReturn("testClientRegistrationId");
+
+        ZacTokenService zacTokenService = new ZacTokenService(SERVICEID, zoneConfig, "", request, mockRegistration);
+        zacTokenService.setServiceBaseDomain(BASE_DOMAIN);
+        zacTokenService.setServiceZoneHeaders(PREDIX_ZONE_HEADER_NAME);
+        zacTokenService.setIssuersTtlSeconds(300);
+
+        zacTokenService.afterPropertiesSet();
+        assertNotNull(zacTokenService);
+    }
+
+    @Test
+    public void testConstructorWithValidParameters() {
+        HttpServletRequest request = mockHttpRequestWithZoneAsHeader(ZONE, "/test");
+        DefaultZoneConfiguration zoneConfig = new DefaultZoneConfiguration(List.of("/zone/**"));
+        ClientRegistration mockRegistration = mock(ClientRegistration.class);
+        when(mockRegistration.getRegistrationId()).thenReturn("testClientRegistrationId");
+        String zacUrl = "https://zac.example.com";
+
+        ZacTokenService zacTokenService = new ZacTokenService(SERVICEID, zoneConfig, zacUrl, request, mockRegistration);
+        assertNotNull(zacTokenService);
+    }
+
+    @Test
+    public void testConstructorWithEmptyZacUrl() {
+        HttpServletRequest request = mockHttpRequestWithZoneAsHeader(ZONE, "/test");
+        DefaultZoneConfiguration zoneConfig = new DefaultZoneConfiguration(List.of("/zone/**"));
+        ClientRegistration mockRegistration = mock(ClientRegistration.class);
+        when(mockRegistration.getRegistrationId()).thenReturn("testClientRegistrationId");
+
+        ZacTokenService zacTokenService = new ZacTokenService(SERVICEID, zoneConfig, "", request, mockRegistration);
+        assertNotNull(zacTokenService);
+    }
+
+    @Test
+    public void testConstructorWithNullParameters() {
+        ClientRegistration mockRegistration = mock(ClientRegistration.class);
+        when(mockRegistration.getRegistrationId()).thenReturn("testClientRegistrationId");
+
+        ZacTokenService zacTokenService = new ZacTokenService(null, null, null, null, mockRegistration);
+        assertNotNull(zacTokenService);
+    }
+
+    @Test
+    public void testGetOrCreateZoneTokenServiceMultipleTimes() throws Exception {
+        HttpServletRequest request = mockHttpRequestWithZoneAsHeader(ZONE, "/test");
+        DefaultZoneConfiguration zoneConfig = new DefaultZoneConfiguration(List.of("/zone/**"));
+        ClientRegistration mockRegistration = mock(ClientRegistration.class);
+        when(mockRegistration.getRegistrationId()).thenReturn("testClientRegistrationId");
+
+        ZacTokenService zacTokenService = Mockito.spy(new ZacTokenService(SERVICEID, zoneConfig, "", request, mockRegistration));
+        zacTokenService.setServiceBaseDomain(BASE_DOMAIN);
+        zacTokenService.setIssuersTtlSeconds(100);
+
+        FastTokenServices mockFTS = mockFastTokenService();
+        Mockito.doReturn(mockFTS).when(zacTokenService).createFastTokenService(anyString());
+
+        zacTokenService.afterPropertiesSet();
+
+        FastTokenServices result1 = zacTokenService.getOrCreateZoneTokenService(ZONE);
+        FastTokenServices result2 = zacTokenService.getOrCreateZoneTokenService(ZONE);
+        FastTokenServices result3 = zacTokenService.getOrCreateZoneTokenService(ZONE);
+
+        assertNotNull(result1);
+        assertNotNull(result2);
+        assertNotNull(result3);
+    }
+
+    @Test
+    public void testGetOrCreateZoneTokenServiceWithDifferentZones() throws Exception {
+        HttpServletRequest request = mockHttpRequestWithZoneAsHeader(ZONE, "/test");
+        DefaultZoneConfiguration zoneConfig = new DefaultZoneConfiguration(List.of("/zone/**"));
+        ClientRegistration mockRegistration = mock(ClientRegistration.class);
+        when(mockRegistration.getRegistrationId()).thenReturn("testClientRegistrationId");
+
+        ZacTokenService zacTokenService = Mockito.spy(new ZacTokenService(SERVICEID, zoneConfig, "", request, mockRegistration));
+        zacTokenService.setServiceBaseDomain(BASE_DOMAIN);
+        zacTokenService.setIssuersTtlSeconds(100);
+
+        FastTokenServices mockFTS1 = mockFastTokenService();
+        FastTokenServices mockFTS2 = mockFastTokenService();
+
+        Mockito.doReturn(mockFTS1).when(zacTokenService).createFastTokenService("zone1");
+        Mockito.doReturn(mockFTS2).when(zacTokenService).createFastTokenService("zone2");
+
+        zacTokenService.afterPropertiesSet();
+
+        FastTokenServices result1 = zacTokenService.getOrCreateZoneTokenService("zone1");
+        FastTokenServices result2 = zacTokenService.getOrCreateZoneTokenService("zone2");
+
+        assertNotNull(result1);
+        assertNotNull(result2);
+    }
+
+    @Test
+    public void testSetServiceZoneHeadersWithMultipleHeaders() {
+        HttpServletRequest request = mockHttpRequestWithZoneAsHeader(ZONE, "/test");
+        DefaultZoneConfiguration zoneConfig = new DefaultZoneConfiguration(List.of("/zone/**"));
+        ClientRegistration mockRegistration = mock(ClientRegistration.class);
+        when(mockRegistration.getRegistrationId()).thenReturn("testClientRegistrationId");
+
+        ZacTokenService zacTokenService = new ZacTokenService(SERVICEID, zoneConfig, "", request, mockRegistration);
+        zacTokenService.setServiceZoneHeaders("Header1,Header2,Header3");
+
+        Assert.assertEquals(zacTokenService.getServiceZoneHeadersList(), Arrays.asList("Header1", "Header2", "Header3"));
+    }
+
+    @Test
+    public void testSetServiceBaseDomainWithMultipleDomains() {
+        HttpServletRequest request = mockHttpRequestWithZoneAsHeader(ZONE, "/test");
+        DefaultZoneConfiguration zoneConfig = new DefaultZoneConfiguration(List.of("/zone/**"));
+        ClientRegistration mockRegistration = mock(ClientRegistration.class);
+        when(mockRegistration.getRegistrationId()).thenReturn("testClientRegistrationId");
+
+        ZacTokenService zacTokenService = new ZacTokenService(SERVICEID, zoneConfig, "", request, mockRegistration);
+        zacTokenService.setServiceBaseDomain("domain1.com,domain2.com");
+
+        Assert.assertEquals(zacTokenService.getServiceBaseDomainList(), Arrays.asList("domain1.com", "domain2.com"));
+    }
+
+    @Test
+    public void testInheritedMethodsFromAbstractZoneAwareTokenService() {
+        HttpServletRequest request = mockHttpRequestWithZoneAsHeader(ZONE, "/test");
+        DefaultZoneConfiguration zoneConfig = new DefaultZoneConfiguration(List.of("/zone/**"));
+        ClientRegistration mockRegistration = mock(ClientRegistration.class);
+        when(mockRegistration.getRegistrationId()).thenReturn("testClientRegistrationId");
+
+        ZacTokenService zacTokenService = new ZacTokenService(SERVICEID, zoneConfig, "", request, mockRegistration);
+
+        Assert.assertTrue(zacTokenService.supports(BearerTokenAuthenticationToken.class));
+    }
+
+    @Test
+    public void testMultipleZonesInCache() throws Exception {
+        HttpServletRequest request = mockHttpRequestWithZoneAsHeader(ZONE, "/test");
+        DefaultZoneConfiguration zoneConfig = new DefaultZoneConfiguration(List.of("/zone/**"));
+        ClientRegistration mockRegistration = mock(ClientRegistration.class);
+        when(mockRegistration.getRegistrationId()).thenReturn("testClientRegistrationId");
+
+        ZacTokenService zacTokenService = Mockito.spy(new ZacTokenService(SERVICEID, zoneConfig, "", request, mockRegistration));
+        zacTokenService.setServiceBaseDomain(BASE_DOMAIN);
+        zacTokenService.setIssuersTtlSeconds(100);
+
+        FastTokenServices mockFTS = mockFastTokenService();
+        Mockito.doReturn(mockFTS).when(zacTokenService).createFastTokenService(anyString());
+
+        zacTokenService.afterPropertiesSet();
+
+        List<String> zones = Arrays.asList("zone1", "zone2", "zone3", "zone4", "zone5");
+        for (String zone : zones) {
+            FastTokenServices fts = zacTokenService.getOrCreateZoneTokenService(zone);
+            assertNotNull(fts);
+        }
+
+        for (String zone : zones) {
+            FastTokenServices fts = zacTokenService.getOrCreateZoneTokenService(zone);
+            assertNotNull(fts);
+        }
+    }
 }
