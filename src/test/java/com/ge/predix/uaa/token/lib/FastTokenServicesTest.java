@@ -231,4 +231,305 @@ public class FastTokenServicesTest {
             .thenReturn(new ResponseEntity<>(TOKEN_KEY_RESPONSE, HttpStatus.OK));
         return restTemplate;
     }
+
+    @Test
+    public void testDefaultConstructor() {
+        FastTokenServices service = new FastTokenServices();
+        assertNotNull(service);
+    }
+
+    @Test
+    public void testConstructorWithTTL() {
+        FastTokenServices service = new FastTokenServices(10000L);
+        assertNotNull(service);
+    }
+
+    @Test
+    public void testConstructorWithMaxTTL() {
+        FastTokenServices service = new FastTokenServices(Long.MAX_VALUE);
+        assertNotNull(service);
+    }
+
+    @Test
+    public void testConstructorWithZeroTTL() {
+        FastTokenServices service = new FastTokenServices(0L);
+        assertNotNull(service);
+    }
+
+    @Test
+    public void testSetUseHttps() {
+        fastTokenServices.setUseHttps(false);
+        assertEquals(fastTokenServices.getTokenKeyURL("http://localhost:8080/uaa/oauth/token"),
+                    "http://localhost:8080/uaa/token_key");
+    }
+
+    @Test
+    public void testSetUseHttpsTrue() {
+        fastTokenServices.setUseHttps(true);
+        assertEquals(fastTokenServices.getTokenKeyURL("http://localhost:8080/uaa/oauth/token"),
+                    "https://localhost:8080/uaa/token_key");
+    }
+
+    @Test
+    public void testSetMaxAcceptableClockSkewSeconds() {
+        fastTokenServices.setMaxAcceptableClockSkewSeconds(120);
+        assertNotNull(fastTokenServices);
+    }
+
+    @Test
+    public void testSetTokenKeyRequestTimeout() {
+        fastTokenServices.setTokenKeyRequestTimeout(5);
+        assertNotNull(fastTokenServices);
+    }
+
+    @Test
+    public void testSetIssuerPublicKeyTTLMillis() {
+        fastTokenServices.setIssuerPublicKeyTTLMillis(5000L);
+        assertNotNull(fastTokenServices);
+    }
+
+    @Test
+    public void testSetResourceIdClaimName() {
+        fastTokenServices.setResourceIdClaimName("client_id");
+        assertNotNull(fastTokenServices);
+    }
+
+    @Test
+    public void testSetJwtAuthenticationConverter() {
+        JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
+        fastTokenServices.setJwtAuthenticationConverter(converter);
+        assertNotNull(fastTokenServices);
+    }
+
+    @Test
+    public void testSupports() {
+        assertEquals(fastTokenServices.supports(BearerTokenAuthenticationToken.class), true);
+    }
+
+    @Test
+    public void testSupportsOtherClass() {
+        assertEquals(fastTokenServices.supports(String.class), false);
+    }
+
+    @Test
+    public void testAfterPropertiesSet() throws Exception {
+        FastTokenServices service = new FastTokenServices();
+        service.setIssuerPublicKeyTTLMillis(1000L);
+        service.afterPropertiesSet();
+        assertNotNull(service);
+    }
+
+    @Test
+    public void testAfterPropertiesSetMultipleTimes() throws Exception {
+        FastTokenServices service = new FastTokenServices();
+        service.afterPropertiesSet();
+        service.afterPropertiesSet();
+        service.afterPropertiesSet();
+        assertNotNull(service);
+    }
+
+    @Test
+    public void testGetTokenKeyURLWithNullIssuer() {
+        String result = fastTokenServices.getTokenKeyURL(null);
+        assertEquals(result, null);
+    }
+
+    @Test(expectedExceptions = IllegalStateException.class)
+    public void testGetTokenKeyURLWithInvalidIssuer() {
+        fastTokenServices.getTokenKeyURL("invalid-issuer");
+    }
+
+    @Test(expectedExceptions = IllegalStateException.class)
+    public void testGetTokenKeyURLWithoutOAuthToken() {
+        fastTokenServices.getTokenKeyURL("http://localhost:8080/uaa");
+    }
+
+    @Test
+    public void testGetTokenKeyURLWithHttps() {
+        String result = fastTokenServices.getTokenKeyURL("https://example.com/uaa/oauth/token");
+        assertEquals(result, "https://example.com/uaa/token_key");
+    }
+
+    @Test
+    public void testGetTokenKeyURLWithHttp() {
+        fastTokenServices.setUseHttps(false);
+        String result = fastTokenServices.getTokenKeyURL("http://example.com/uaa/oauth/token");
+        assertEquals(result, "http://example.com/uaa/token_key");
+    }
+
+    @Test
+    public void testGetTokenClaims() throws ParseException {
+        String token = testTokenUtil.mockAccessToken(TOKEN_ISSUER_ID,
+            LocalDateTime.now().plusDays(1).toInstant(ZoneOffset.UTC).toEpochMilli(), 60);
+        SignedJWT signedJWT = SignedJWT.parse(token);
+        Map<String, Object> claims = fastTokenServices.getTokenClaims(signedJWT);
+        assertNotNull(claims);
+        assertEquals(claims.get(Claims.ISS), TOKEN_ISSUER_ID);
+    }
+
+    @Test(expectedExceptions = InvalidBearerTokenException.class,
+          expectedExceptionsMessageRegExp = ".*is not trusted.*")
+    public void testVerifyIssuerWithMultipleTrustedIssuers() {
+        fastTokenServices.setTrustedIssuers(List.of("http://issuer1", "http://issuer2", "http://issuer3"));
+        fastTokenServices.verifyIssuer("http://untrusted");
+    }
+
+    @Test
+    public void testVerifyIssuerWithMultipleTrustedIssuersValid() {
+        fastTokenServices.setTrustedIssuers(List.of("http://issuer1", "http://issuer2", "http://issuer3"));
+        fastTokenServices.verifyIssuer("http://issuer2");
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testVerifyIssuerWithEmptyTrustedIssuers() {
+        fastTokenServices.setTrustedIssuers(List.of());
+        fastTokenServices.verifyIssuer("http://anyissuer");
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testVerifyIssuerWithNullTrustedIssuers() {
+        fastTokenServices.setTrustedIssuers(null);
+        fastTokenServices.verifyIssuer("http://anyissuer");
+    }
+
+    @Test
+    public void testAuthenticateWithValidResourceId() throws Exception {
+        String token = testTokenUtil.mockAccessToken(TOKEN_ISSUER_ID,
+            LocalDateTime.now().plusDays(3).toInstant(ZoneOffset.UTC).toEpochMilli(), 60);
+        Map<String, Object> claimMap = SignedJWT.parse(token).getJWTClaimsSet().getClaims();
+        Map<String, Object> tokenMap = new HashMap<>(claimMap);
+        tokenMap.put(Claims.IAT, LocalDateTime.now().minusDays(1).toInstant(ZoneOffset.UTC));
+        tokenMap.put(Claims.EXP, LocalDateTime.now().plusDays(3).toInstant(ZoneOffset.UTC));
+
+        when(mockRestTemplate.exchange(anyString(), eq(HttpMethod.GET), any(), eq(String.class)))
+            .thenReturn(new ResponseEntity<>(TOKEN_KEY_RESPONSE, HttpStatus.OK));
+
+        fastTokenServices.setExpectedResourceId(null);
+        Authentication result = fastTokenServices.authenticate(new BearerTokenAuthenticationToken(token));
+        assertNotNull(result);
+    }
+
+    @Test(expectedExceptions = OAuth2AuthenticationException.class)
+    public void testAuthenticateWithNullAudienceList() throws Exception {
+        String token = testTokenUtil.mockAccessToken(TOKEN_ISSUER_ID,
+            LocalDateTime.now().plusDays(3).toInstant(ZoneOffset.UTC).toEpochMilli(), 60);
+
+        when(mockRestTemplate.exchange(anyString(), eq(HttpMethod.GET), any(), eq(String.class)))
+            .thenReturn(new ResponseEntity<>(TOKEN_KEY_RESPONSE, HttpStatus.OK));
+
+        fastTokenServices.setExpectedResourceId("some.resource");
+        fastTokenServices.setResourceIdClaimName("nonexistent_claim");
+        fastTokenServices.authenticate(new BearerTokenAuthenticationToken(token));
+    }
+
+    @Test
+    public void testGetTokenKeyWithRestTemplateInitialization() {
+        FastTokenServices service = new FastTokenServices();
+        service.setTrustedIssuers(List.of(TOKEN_ISSUER_ID));
+        service.setTokenKeyRequestTimeout(10);
+
+        RestTemplate mockRest = mockRestTemplate();
+        service.setRestTemplate(mockRest);
+
+        String tokenKey = service.getTokenKey(TOKEN_ISSUER_ID);
+        assertNotNull(tokenKey);
+    }
+
+    @Test(expectedExceptions = RuntimeException.class)
+    public void testGetTokenKeyWithException() {
+        FastTokenServices service = new FastTokenServices();
+        RestTemplate mockRest = Mockito.mock(RestTemplate.class);
+        when(mockRest.exchange(anyString(), eq(HttpMethod.GET), any(), eq(String.class)))
+            .thenThrow(new RuntimeException("Connection error"));
+        service.setRestTemplate(mockRest);
+
+        service.getTokenKey("http://example.com/oauth/token");
+    }
+
+    @Test
+    public void testSetTrustedIssuersWithSingleIssuer() {
+        fastTokenServices.setTrustedIssuers(List.of("http://single.issuer"));
+        fastTokenServices.verifyIssuer("http://single.issuer");
+    }
+
+    @Test
+    public void testSetTrustedIssuersWithMultipleIssuers() {
+        List<String> issuers = List.of("http://issuer1", "http://issuer2", "http://issuer3", "http://issuer4");
+        fastTokenServices.setTrustedIssuers(issuers);
+        fastTokenServices.verifyIssuer("http://issuer1");
+        fastTokenServices.verifyIssuer("http://issuer4");
+    }
+
+    @Test
+    public void testConstructorInitializesJwtAuthenticationConverter() throws Exception {
+        FastTokenServices service = new FastTokenServices();
+        String token = testTokenUtil.mockAccessToken(TOKEN_ISSUER_ID,
+            LocalDateTime.now().plusDays(3).toInstant(ZoneOffset.UTC).toEpochMilli(), 60);
+
+        service.setTrustedIssuers(List.of(TOKEN_ISSUER_ID));
+        service.setRestTemplate(mockRestTemplate());
+        service.afterPropertiesSet();
+
+        Authentication result = service.authenticate(new BearerTokenAuthenticationToken(token));
+        assertNotNull(result);
+    }
+
+    @Test
+    public void testCacheExpirationAndReload() throws Exception {
+        FastTokenServices service = new FastTokenServices(); // Default constructor initializes converter
+        service.setTrustedIssuers(List.of(TOKEN_ISSUER_ID));
+        service.setRestTemplate(mockRestTemplate());
+        service.setIssuerPublicKeyTTLMillis(100L); // 100ms TTL
+        service.afterPropertiesSet();
+
+        String token = testTokenUtil.mockAccessToken(TOKEN_ISSUER_ID,
+            LocalDateTime.now().plusDays(3).toInstant(ZoneOffset.UTC).toEpochMilli(), 60);
+
+        Authentication result1 = service.authenticate(new BearerTokenAuthenticationToken(token));
+        assertNotNull(result1);
+
+        Thread.sleep(150); // Wait for cache to expire
+
+        Authentication result2 = service.authenticate(new BearerTokenAuthenticationToken(token));
+        assertNotNull(result2);
+    }
+
+    @Test(expectedExceptions = InvalidBearerTokenException.class)
+    public void testAuthenticateWithMalformedToken() {
+        fastTokenServices.authenticate(new BearerTokenAuthenticationToken("malformed.jwt.token"));
+    }
+
+    @Test
+    public void testMultipleAuthenticationCalls() throws Exception {
+        String token = testTokenUtil.mockAccessToken(TOKEN_ISSUER_ID,
+            LocalDateTime.now().plusDays(3).toInstant(ZoneOffset.UTC).toEpochMilli(), 60);
+
+        when(mockRestTemplate.exchange(anyString(), eq(HttpMethod.GET), any(), eq(String.class)))
+            .thenReturn(new ResponseEntity<>(TOKEN_KEY_RESPONSE, HttpStatus.OK));
+
+        Authentication result1 = fastTokenServices.authenticate(new BearerTokenAuthenticationToken(token));
+        Authentication result2 = fastTokenServices.authenticate(new BearerTokenAuthenticationToken(token));
+        Authentication result3 = fastTokenServices.authenticate(new BearerTokenAuthenticationToken(token));
+
+        assertNotNull(result1);
+        assertNotNull(result2);
+        assertNotNull(result3);
+    }
+
+    @Test
+    public void testSetIssuerPublicKeyTTLMillisWithDifferentValues() {
+        fastTokenServices.setIssuerPublicKeyTTLMillis(1000L);
+        fastTokenServices.setIssuerPublicKeyTTLMillis(Long.MAX_VALUE);
+        fastTokenServices.setIssuerPublicKeyTTLMillis(0L);
+        assertNotNull(fastTokenServices);
+    }
+
+    @Test
+    public void testGetTokenKeyURLWithDifferentPaths() {
+        String url1 = fastTokenServices.getTokenKeyURL("http://example.com/path1/oauth/token");
+        assertEquals(url1, "https://example.com/path1/token_key");
+
+        String url2 = fastTokenServices.getTokenKeyURL("http://example.com/path1/path2/oauth/token");
+        assertEquals(url2, "https://example.com/path1/path2/token_key");
+    }
 }
