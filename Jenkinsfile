@@ -1,7 +1,10 @@
 #!groovy
 
 // Define Artifactory for publishing non-docker image artifacts
-def digitalGridArtServer = Artifactory.server('Digital-Artifactory')
+def digitalGridArtServer = Artifactory.newServer(
+    url: "https://gart.software.gevernova.com/artifactory",
+    credentialsId: 'iam-artifactory-access-token-dev'
+)
 def ARTIFACTORY_SERVER_URL = digitalGridArtServer.getUrl()
 library "security-ci-commons-shared-lib"
 
@@ -61,7 +64,7 @@ pipeline {
                 expression { env.BRANCH_NAME == 'master' || env.BRANCH_NAME == 'develop' }
             }
             environment {
-                DEPLOY_CREDS = credentials('DIGITAL_GRID_ARTIFACTORY_CREDENTIALS')
+                DEPLOY_CREDS = credentials('iam-artifactory-access-token-dev')
                 MAVEN_CENTRAL_STAGING_PROFILE_ID=credentials('MAVEN_CENTRAL_STAGING_PROFILE_ID')
             }
             steps {
