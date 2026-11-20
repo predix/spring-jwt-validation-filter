@@ -38,7 +38,13 @@ pipeline {
              post {
                 always {
                     junit '**/surefire-reports/junitreports/TEST*.xml'
-                    step([$class: 'JacocoPublisher', execPattern: '**/**.exec', maximumBranchCoverage: '90', maximumInstructionCoverage: '90'])
+                    recordCoverage(
+                        tools: [[parser: 'JACOCO', pattern: 'target/site/jacoco/jacoco.xml']],
+                        qualityGates: [
+                            [metric: 'BRANCH', threshold: 90.0, baseline: 'PROJECT', criticality: 'FAILURE'],
+                            [metric: 'INSTRUCTION', threshold: 90.0, baseline: 'PROJECT', criticality: 'FAILURE']
+                        ]
+                    )
                 }
                 success {
                     echo 'Build and Test stage completed'
