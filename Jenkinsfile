@@ -68,7 +68,6 @@ pipeline {
             }
             environment {
                 DEPLOY_CREDS = credentials('DIGITAL_GRID_ARTIFACTORY_CREDENTIALS')
-                MAVEN_CENTRAL_STAGING_PROFILE_ID=credentials('MAVEN_CENTRAL_STAGING_PROFILE_ID')
             }
             steps {
                 dir('spring-filters-config') {
@@ -82,14 +81,10 @@ pipeline {
                     echo "Uploading uaa-token-lib ${APP_VERSION} build to Artifactory"
                     if (env.BRANCH_NAME == 'master') {
                         ARTIFACTORY_REPO = 'pgog-fss-iam-uaa-mvn'
-                        echo "Branch is master push to ${ARTIFACTORY_REPO}, and maven central"
+                        echo "Branch is master push to ${ARTIFACTORY_REPO}"
 
                         sh """#!/usr/bin/env bash
                             set -ex
-                            apk update
-                            apk add --no-cache gnupg
-                            gpg --version
-                            ln -s ${WORKSPACE} /working-dir
 
                             #Deploy/Release to digital grid repository
                             mvn clean deploy -B -s spring-filters-config/mvn_settings_noproxy.xml \\
@@ -98,10 +93,6 @@ pipeline {
                             -Dartifactory.password=${DEPLOY_CREDS_PSW} \\
                             -DskipTests -e
 
-                            #Deploy/Release to maven central repository
-                            mvn -B clean deploy -B -P release -s spring-filters-config/mvn_settings_noproxy.xml \\
-                             -D gpg.homedir=/working-dir/spring-filters-config/gnupg -D stagingProfileId=$MAVEN_CENTRAL_STAGING_PROFILE_ID \\
-                             -D skipTests -e
                         """
                     }
                     else {
@@ -110,10 +101,6 @@ pipeline {
 
                         sh """#!/usr/bin/env bash
                             set -ex
-                            apk update
-                            apk add --no-cache gnupg
-                            gpg --version
-                            ln -s ${WORKSPACE} /working-dir
                     
                             mvn clean deploy -B -s spring-filters-config/mvn_settings_noproxy.xml \\
                             -DaltDeploymentRepository=artifactory.uaa.snapshots::default::${ARTIFACTORY_SERVER_URL}/${ARTIFACTORY_REPO} \\
