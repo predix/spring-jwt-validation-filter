@@ -137,10 +137,16 @@ pipeline {
                     stage('SonarQube Scanning') {
                         steps {
                             withSonarQubeEnv('SONAR_INSTANCE') {
-                                sh """
+                                sh '''
                                     mvn -B clean install -Pcoverage
-                                    mvn -B sonar:sonar -s sonar.xml
-                                """
+                                    set +x
+                                    mvn -B sonar:sonar \\
+                                        -Dsonar.host.url="$SONAR_HOST_URL" \\
+                                        -Dsonar.token="$SONAR_LOGIN_KEY" \\
+                                        -Dsonar.projectName=UAA_Token_Lib \\
+                                        -Dsonar.junit.reportPaths=target/surefire-reports \\
+                                        -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
+                                '''
                             } // Submitted: SonarQube taskId is automatically attached to the pipeline context
                         }
                     }
