@@ -10,6 +10,8 @@ import java.util.List;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.server.resource.InvalidBearerTokenException;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.server.ResponseStatusException;
 import org.testng.annotations.Test;
 
@@ -57,6 +59,31 @@ public class AbstractZoneAwareTokenServiceTest {
             }
         };
         Authentication authentication = mock(Authentication.class);
+        tokenService.authenticate(authentication);
+    }
+
+    @Test(expectedExceptions = HttpServerErrorException.class)
+    public void authenticate_ZoneRequestServerError_PropagatesException() {
+        HttpServletRequest request = mock(HttpServletRequest.class);
+        when(request.getRequestURI()).thenReturn("/zone-specific");
+        when(request.getHeader("Predix-Zone-Id")).thenReturn("zone1");
+
+        DefaultZoneConfiguration defaultZoneConfig = mock(DefaultZoneConfiguration.class);
+        when(defaultZoneConfig.getAllowedUriPatterns()).thenReturn(List.of("/non-zone-specific"));
+
+        FastTokenServices fastTokenServices = mock(FastTokenServices.class);
+        Authentication authentication = mock(Authentication.class);
+        when(fastTokenServices.authenticate(authentication))
+                .thenThrow(new HttpServerErrorException(HttpStatus.INTERNAL_SERVER_ERROR));
+
+        AbstractZoneAwareTokenService tokenService = new AbstractZoneAwareTokenService("serviceId",
+                defaultZoneConfig, request) {
+            @Override
+            protected FastTokenServices getOrCreateZoneTokenService(String zoneId) {
+                return fastTokenServices;
+            }
+        };
+
         tokenService.authenticate(authentication);
     }
 

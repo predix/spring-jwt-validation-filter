@@ -21,6 +21,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
+import org.springframework.beans.factory.BeanCreationException;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -99,6 +100,20 @@ public class DefaultZoneConfiguratorTest {
 
         Assert.assertEquals(configurator.getTrustedIssuerIds(), Collections.emptyList());
         Assert.assertNull(configurator.getTrustedIssuerId());
+    }
+
+    public void testAfterPropertiesSetWithTrustedIssuer() throws Exception {
+        DefaultZoneConfiguration configurator = new DefaultZoneConfiguration(List.of());
+        configurator.setTrustedIssuerId("http://uaa.predix.com");
+
+        configurator.afterPropertiesSet();
+    }
+
+    @Test(expectedExceptions = BeanCreationException.class)
+    public void testAfterPropertiesSetWithoutTrustedIssuer() throws Exception {
+        DefaultZoneConfiguration configurator = new DefaultZoneConfiguration(List.of());
+
+        configurator.afterPropertiesSet();
     }
 
     @DataProvider
