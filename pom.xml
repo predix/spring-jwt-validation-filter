@@ -55,9 +55,9 @@
         <maven.compiler.source>21</maven.compiler.source>
         <maven.compiler.target>21</maven.compiler.target>
         <maven-bundle-plugin.version>2.3.7</maven-bundle-plugin.version>
-        <jackson.version>2.18.2</jackson.version>
+        <jackson.version>2.18.12</jackson.version>
         <spring-security-jwt.version>1.1.1.RELEASE</spring-security-jwt.version>
-        <spring-core.version>6.1.16</spring-core.version>
+        <spring-core.version>6.2.19</spring-core.version>
         <!-- Test Dependency Version -->
         <mockito.version>5.15.2</mockito.version>
         <testng.version>7.11.0</testng.version>
@@ -99,7 +99,7 @@
         </dependency>
         <dependency>
             <groupId>org.springframework</groupId>
-            <artifactId>spring-webmvc</artifactId>
+            <artifactId>spring-web</artifactId>
             <version>${spring-core.version}</version>
         </dependency>
         <dependency>
